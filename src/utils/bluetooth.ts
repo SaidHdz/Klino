@@ -3,11 +3,18 @@ import { PermissionsAndroid, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
 class BluetoothService {
-  private manager: BleManager;
+  private manager: BleManager | null = null;
   private connectedDevice: Device | null = null;
 
   constructor() {
-    this.manager = new BleManager();
+    // Lazy initialization
+  }
+
+  private getManager(): BleManager {
+    if (!this.manager) {
+      this.manager = new BleManager();
+    }
+    return this.manager;
   }
 
   async requestPermissions() {
@@ -43,13 +50,13 @@ class BluetoothService {
       return;
     }
 
-    const state = await this.manager.state();
+    const state = await this.getManager().state();
     if (state !== State.PoweredOn) {
       console.warn('Bluetooth is not powered on');
       return;
     }
 
-    this.manager.startDeviceScan(null, null, (error, device) => {
+    this.getManager().startDeviceScan(null, null, (error, device) => {
       if (error) {
         console.error('Scan Error:', error);
         return;
@@ -61,7 +68,7 @@ class BluetoothService {
   }
 
   stopScan() {
-    this.manager.stopDeviceScan();
+    this.getManager().stopDeviceScan();
   }
 
   async connectToDevice(device: Device) {

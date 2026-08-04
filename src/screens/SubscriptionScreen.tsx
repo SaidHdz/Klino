@@ -84,94 +84,97 @@ const SubscriptionScreen = () => {
           <MotiView 
             from={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-klino-primary p-8 rounded-[40px] shadow-xl shadow-klino-primary/30 mb-8 overflow-hidden"
+            className="bg-klino-primary p-6 rounded-3xl shadow-[0_8px_30px_rgb(27,79,155,0.2)] mb-6 overflow-hidden relative"
           >
-            <View className="flex-row justify-between items-start mb-8">
+            <View className="flex-row justify-between items-start mb-6">
               <View className="flex-1">
-                <Text className="text-white/70 font-bold text-[10px] uppercase tracking-[3px]">Plan Actual</Text>
-                <Text className="text-white text-3xl font-black mt-1">Personal</Text>
+                <Text className="text-white/70 font-bold text-[10px] uppercase tracking-[2px]">Plan Actual</Text>
+                <Text className="text-white text-3xl font-bold mt-1 tracking-tight">Personal</Text>
               </View>
-              <View className="bg-white/20 p-4 rounded-[24px] ml-4">
-                <Zap size={28} color="white" />
+              <View className="bg-white/20 w-12 h-12 items-center justify-center rounded-2xl ml-4">
+                <Zap size={24} color="white" />
               </View>
             </View>
 
-            <View className="space-y-4">
+            <View className="space-y-3">
               {['IA de procesamiento ilimitada', 'Hardware multi-link activo', 'Soporte prioritario 24/7'].map((feat, i) => (
-                <View key={i} className="flex-row items-center mb-2">
-                  <CheckCircle2 size={16} color="#5EEAD4" />
-                  <Text className="text-white ml-3 font-semibold text-xs tracking-tight">{feat}</Text>
+                <View key={i} className="flex-row items-center mb-1.5">
+                  <CheckCircle2 size={14} color="#5EEAD4" />
+                  <Text className="text-white ml-3 font-medium text-[13px]">{feat}</Text>
                 </View>
               ))}
             </View>
 
-            <View className="mt-10 pt-8 border-t border-white/10 flex-row justify-between items-end">
+            <View className="mt-8 pt-6 border-t border-white/10 flex-row justify-between items-end">
               <View>
-                <Text className="text-white/50 text-[8px] font-black uppercase tracking-widest">Próximo Cobro</Text>
-                <Text className="text-white font-bold text-sm mt-1">21 Mayo, 2026</Text>
+                <Text className="text-white/50 text-[9px] font-bold uppercase tracking-widest">Próximo Cobro</Text>
+                <Text className="text-white font-semibold text-[13px] mt-1">21 Mayo, 2026</Text>
               </View>
               <View className="items-end">
-                <Text className="text-white font-black text-2xl tracking-tighter">$250.00</Text>
-                <Text className="text-white/70 text-[10px] font-bold uppercase">mensual</Text>
+                <Text className="text-white font-bold text-2xl tracking-tight">$250.00</Text>
+                <Text className="text-white/70 text-[9px] font-bold uppercase tracking-widest">mensual</Text>
               </View>
             </View>
           </MotiView>
 
           <TouchableOpacity 
             onPress={() => setShowPlansCarousel(true)}
-            className="w-full bg-klino-card p-4 rounded-3xl border border-klino-background shadow-sm flex-row items-center justify-center mb-8"
+            className="w-full bg-white py-3.5 rounded-xl border border-slate-200/60 shadow-[0_2px_10px_rgb(0,0,0,0.02)] flex-row items-center justify-center mb-8"
           >
-            <RefreshCw size={16} color="#1B4F9B" />
-            <Text className="text-klino-primary font-black text-xs uppercase tracking-widest ml-2">Cambiar Plan</Text>
+            <RefreshCw size={14} color="#1B4F9B" />
+            <Text className="text-klino-primary font-bold text-[12px] uppercase tracking-widest ml-2">Cambiar Plan</Text>
           </TouchableOpacity>
 
           <View className="mb-8">
-            <View className="flex-row justify-between items-center mb-4 px-1">
-              <Text className="text-klino-subtext font-bold text-[10px] uppercase tracking-[2px]">Método de Pago</Text>
-              <TouchableOpacity onPress={handleInDevelopment}>
-                <Plus size={16} color="#1B4F9B" />
+            <View className="flex-row justify-between items-center mb-2 px-1">
+              <Text className="text-slate-500 font-semibold text-[11px] uppercase tracking-[1.5px]">MÉTODO DE PAGO</Text>
+              <TouchableOpacity onPress={handleInDevelopment} className="flex-row items-center">
+                <Text className="text-klino-primary text-[10px] font-bold uppercase tracking-widest mr-1">Añadir</Text>
+                <Plus size={14} color="#1B4F9B" />
               </TouchableOpacity>
             </View>
-            <View className="bg-klino-card p-5 rounded-[28px] border border-klino-background shadow-sm flex-row items-center justify-between">
+            <View className="bg-white p-4 rounded-2xl border border-slate-200/60 shadow-[0_2px_10px_rgb(0,0,0,0.02)] flex-row items-center justify-between">
               <View className="flex-row items-center">
-                <View className="w-12 h-12 bg-klino-background rounded-2xl justify-center items-center mr-4 border border-slate-100">
-                  <CardIcon size={24} color="#5A6B7E" />
+                <View className="w-10 h-10 bg-slate-50 rounded-xl justify-center items-center mr-4 border border-slate-100">
+                  <CardIcon size={20} color="#64748B" />
                 </View>
                 <View>
-                  <Text className="font-black text-klino-text text-sm">{cardData.number}</Text>
-                  <Text className="text-[10px] text-klino-subtext font-bold uppercase tracking-widest">{cardData.type} Platinum</Text>
+                  <Text className="font-semibold text-slate-900 text-[15px]">{cardData.number}</Text>
+                  <Text className="text-[11px] text-slate-500 mt-0.5 uppercase tracking-wide">{cardData.type} Platinum</Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={handleEditCard}>
-                <Text className="text-klino-primary font-bold text-xs uppercase tracking-widest">Ver Tarjeta</Text>
+              <TouchableOpacity onPress={handleEditCard} className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
+                <Text className="text-slate-600 font-bold text-[10px] uppercase tracking-widest">Editar</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           <View className="mb-12">
-            <Text className="text-klino-subtext font-bold text-[10px] uppercase tracking-[2px] mb-4 ml-1">Facturación Reciente</Text>
+            <Text className="text-slate-500 font-semibold text-[11px] uppercase tracking-[1.5px] mb-2 ml-1">FACTURACIÓN RECIENTE</Text>
+            <View className="bg-white rounded-2xl border border-slate-200/60 shadow-[0_2px_10px_rgb(0,0,0,0.02)] overflow-hidden">
             {[
               { id: '1', date: '21 Abr 2026', amount: '$250.00' },
               { id: '2', date: '21 Mar 2026', amount: '$250.00' },
-            ].map((inv) => (
+            ].map((inv, idx) => (
               <View 
                 key={inv.id}
-                className="bg-klino-card p-5 rounded-[28px] border border-klino-background shadow-sm flex-row items-center justify-between mb-4"
+                className={`p-4 flex-row items-center justify-between ${idx !== 1 ? 'border-b border-slate-100' : ''}`}
               >
                 <View className="flex-row items-center">
-                  <View className="w-10 h-10 bg-klino-background rounded-xl justify-center items-center mr-4">
-                    <ReceiptText size={20} color="#5A6B7E" />
+                  <View className="w-10 h-10 bg-slate-50 rounded-xl justify-center items-center mr-4">
+                    <ReceiptText size={20} color="#64748B" />
                   </View>
                   <View>
-                    <Text className="font-black text-klino-text text-sm">Recibo Klino-{inv.id}0421</Text>
-                    <Text className="text-xs text-klino-subtext font-medium">{inv.date}</Text>
+                    <Text className="font-semibold text-slate-900 text-[14px]">Recibo Klino-{inv.id}0421</Text>
+                    <Text className="text-[11px] text-slate-500 mt-0.5">{inv.date}</Text>
                   </View>
                 </View>
-                <TouchableOpacity onPress={() => handleDownloadInvoice(inv.id)}>
-                  <Download size={20} color="#1B4F9B" />
+                <TouchableOpacity onPress={() => handleDownloadInvoice(inv.id)} className="w-8 h-8 items-center justify-center bg-slate-50 rounded-full border border-slate-200">
+                  <Download size={14} color="#1B4F9B" />
                 </TouchableOpacity>
               </View>
             ))}
+            </View>
           </View>
         </View>
       </ScrollView>

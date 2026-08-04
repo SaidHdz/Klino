@@ -79,6 +79,12 @@ interface ProfileContextType {
   primaryColor: string;
   doctorName: string;
   setDoctorName: (name: string) => Promise<void>;
+  doctorCedula: string;
+  setDoctorCedula: (cedula: string) => Promise<void>;
+  doctorUniversity: string;
+  setDoctorUniversity: (uni: string) => Promise<void>;
+  doctorAddress: string;
+  setDoctorAddress: (address: string) => Promise<void>;
   profileImage: string | null;
   setProfileImage: (uri: string | null) => Promise<void>;
   dashboardProfileId: string;
@@ -111,7 +117,28 @@ interface ProfileContextType {
 const STORAGE_KEY = '@Klino_USER_PROFILE';
 
 const INITIAL_NOTES: Record<string, ClinicalNote[]> = {
-  '1': [],
+  '1': [
+    {
+      id: 'mock-said-1',
+      name: 'Said Hernandez',
+      specialty: 'Medicina General',
+      status: 'pending',
+      statusText: 'PENDIENTE',
+      time: Date.now(),
+      specialtyColor: '#1B4F9B',
+      vitals: {
+        ta: '120/80',
+        fc: '75',
+        fr: '16',
+        temp: '36.5',
+        sat: '98%',
+        peso: '80',
+        talla: '1.78',
+        imc: '25.2'
+      },
+      transcription: "**ANTECEDENTES PERSONALES PATOLÓGICOS:**\nNiega enfermedades crónico degenerativas previas. Sin alergias conocidas. Traumatismos negados.\n\n**PADECIMIENTO ACTUAL:**\nPaciente masculino que acude por presentar cefalea de intensidad moderada a severa (7/10) de 3 días de evolución, localizada en región occipital, que cede parcialmente con analgésicos comunes.\n\n**EXPLORACIÓN FÍSICA:**\nPaciente consciente, orientado. Pupilas isocóricas normorreflécticas. Exploración neurológica sin alteraciones. Cuello sin rigidez.\n\n**IMPRESIÓN DIAGNÓSTICA:**\nCefalea tensional por estrés laboral.\n\n**PLAN:**\n1. Reposo relativo.\n2. Paracetamol 500mg cada 8 hrs por 3 días.\n3. Cita abierta a urgencias en caso de no presentar mejoría o agregar signos de alarma."
+    }
+  ],
   '2': [],
   '3': [],
 };
@@ -140,6 +167,9 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
   const [isReady, setIsReady] = useState(false);
   const [profile, setProfile] = useState<ProfileType>('General');
   const [doctorName, setDoctorNameState] = useState('Dr. Snupi');
+  const [doctorCedula, setDoctorCedulaState] = useState('12345678');
+  const [doctorUniversity, setDoctorUniversityState] = useState('Universidad Nacional Autónoma de México');
+  const [doctorAddress, setDoctorAddressState] = useState('Av. Insurgentes Sur 123, CDMX');
   const [profileImage, setProfileImageState] = useState<string | null>(null);
   const [dashboardProfileId, setDashboardProfileIdState] = useState('1');
   const [recordsProfileId, setRecordsProfileIdState] = useState('1');
@@ -219,7 +249,13 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
           if (parsed.appSettings) setAppSettings(parsed.appSettings);
           if (parsed.notificationsList) setNotificationsList(parsed.notificationsList);
           if (parsed.savedSignature) setSavedSignature(parsed.savedSignature);
-          if (parsed.notes) setNotes(parsed.notes);
+          if (parsed.notes) {
+            // Forzar inyección de nota de prueba si está vacío
+            if (!parsed.notes['1'] || parsed.notes['1'].length === 0) {
+              parsed.notes['1'] = INITIAL_NOTES['1'];
+            }
+            setNotes(parsed.notes);
+          }
         }
         await syncWithCloud();
       } catch (e) {
@@ -323,11 +359,17 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
   const clearAllNotifications = () => setNotificationsList([]);
   const addNotification = (notification: Omit<AppNotification, 'id'>) => setNotificationsList(prev => [{ id: Date.now().toString(), ...notification }, ...prev]);
 
+  const setDoctorAddress = async (address: string) => setDoctorAddressState(address);
+  const setDoctorCedula = async (cedula: string) => setDoctorCedulaState(cedula);
+  const setDoctorUniversity = async (uni: string) => setDoctorUniversityState(uni);
+
   const primaryColor = profile === 'General' ? '#1B4F9B' : '#2A7D6F';
 
   return (
     <ProfileContext.Provider value={{
       profile, toggleProfile, primaryColor, doctorName, setDoctorName,
+      doctorCedula, setDoctorCedula, doctorUniversity, setDoctorUniversity,
+      doctorAddress, setDoctorAddress,
       profileImage, setProfileImage, userId, dashboardProfileId, setDashboardProfileId,
       recordsProfileId, setRecordsProfileId, intelligenceModes, updateIntelligenceMode,
       deleteIntelligenceMode, addIntelligenceMode, notes, confirmNote, addNote,

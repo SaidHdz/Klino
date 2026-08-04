@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, SafeAreaView, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, SafeAreaView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { Contact2, Lock, Eye, EyeOff, UserPlus, X } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { MotiView } from 'moti';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../utils/supabase';
 
@@ -72,81 +72,80 @@ const SignUpScreen = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-klino-card">
+    <SafeAreaView className="flex-1 bg-slate-50">
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        className="flex-1"
+        className="flex-1 px-8"
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView 
-          contentContainerStyle={{ flexGrow: 1 }} 
-          className="px-8"
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View className="flex-1 py-12">
+        <View className="flex-1 py-12 justify-center">
             
-            <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-start justify-center mb-8">
-              <X size={24} color="#5A6B7E" />
-            </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-start justify-center mb-8 absolute top-8 left-0 z-10">
+            <X size={24} color="#94A3B8" />
+          </TouchableOpacity>
 
-            <View className="items-center mb-10">
-              <Text className="text-3xl font-black text-klino-primary tracking-[6px] mb-4">Klino</Text>
-              <Text className="text-4xl font-black text-klino-text tracking-tighter mb-2 text-center">Registro Médico</Text>
-              <Text className="text-klino-subtext text-center font-medium px-4 leading-5">
-                Crea tu identidad digital para empezar a generar notas IA.
+          <MotiView 
+            from={{ opacity: 0, translateY: -20 }} 
+            animate={{ opacity: 1, translateY: 0 }} 
+            transition={{ type: 'spring', delay: 100 }}
+            className="items-center mb-10 mt-12"
+          >
+            <Text className="text-4xl font-black text-slate-900 tracking-tight mb-2 text-center">Registro Médico</Text>
+          </MotiView>
+
+          <MotiView 
+            from={{ opacity: 0, translateY: 20 }} 
+            animate={{ opacity: 1, translateY: 0 }} 
+            transition={{ type: 'spring', delay: 200 }}
+            className="mt-2"
+          >
+            <View className="mb-5">
+              <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-2">ID Médico Deseado</Text>
+              <View className="flex-row items-center bg-white border border-slate-200/60 rounded-2xl px-5 py-1.5 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
+                <Contact2 size={18} color="#94A3B8" />
+                <TextInput 
+                  placeholder="ej: dr.smith"
+                  placeholderTextColor="#CBD5E1"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  className="flex-1 p-4 text-slate-800 font-semibold"
+                />
+              </View>
+            </View>
+
+            <View className="mb-8">
+              <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-2">Contraseña Segura</Text>
+              <View className="flex-row items-center bg-white border border-slate-200/60 rounded-2xl px-5 py-1.5 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
+                <Lock size={18} color="#94A3B8" />
+                <TextInput 
+                  placeholder="••••••••"
+                  placeholderTextColor="#CBD5E1"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                  className="flex-1 p-4 text-slate-800 font-semibold"
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} className="p-2">
+                  {showPassword ? <EyeOff size={18} color="#94A3B8" /> : <Eye size={18} color="#94A3B8" />}
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity 
+              onPress={handleSignUp}
+              activeOpacity={0.9}
+              disabled={isLoading}
+              className="bg-klino-primary p-4.5 py-4 rounded-2xl items-center shadow-[0_8px_30px_rgb(27,79,155,0.3)] flex-row justify-center"
+            >
+              {isLoading ? <ActivityIndicator color="white" className="mr-3" /> : null}
+              <Text className="text-white font-bold text-[15px] tracking-widest uppercase">
+                {isLoading ? 'Registrando...' : 'Crear Cuenta'}
               </Text>
-            </View>
+            </TouchableOpacity>
+          </MotiView>
 
-            <View className="mt-4">
-              <View className="mb-6">
-                <Text className="text-xs font-semibold text-klino-subtext uppercase tracking-widest mb-2 ml-1">ID Médico Deseado</Text>
-                <View className="flex-row items-center bg-klino-background border border-slate-200 rounded-2xl px-4 py-1 shadow-sm">
-                  <Contact2 size={20} color="#5A6B7E" />
-                  <TextInput 
-                    placeholder="ej: dr.smith"
-                    placeholderTextColor="#CBD5E1"
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    className="flex-1 p-4 text-klino-text font-medium"
-                  />
-                </View>
-              </View>
-
-              <View className="mb-10">
-                <Text className="text-xs font-semibold text-klino-subtext uppercase tracking-widest mb-2 ml-1">Contraseña Segura</Text>
-                <View className="flex-row items-center bg-klino-background border border-slate-200 rounded-2xl px-4 py-1 shadow-sm">
-                  <Lock size={20} color="#5A6B7E" />
-                  <TextInput 
-                    placeholder="••••••••"
-                    placeholderTextColor="#CBD5E1"
-                    secureTextEntry={!showPassword}
-                    value={password}
-                    onChangeText={setPassword}
-                    className="flex-1 p-4 text-klino-text font-medium"
-                  />
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} className="p-2">
-                    {showPassword ? <EyeOff size={20} color="#5A6B7E" /> : <Eye size={20} color="#5A6B7E" />}
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <TouchableOpacity 
-                onPress={handleSignUp}
-                activeOpacity={0.9}
-                disabled={isLoading}
-                className="bg-klino-primary p-5 rounded-2xl items-center shadow-md shadow-klino-primary/20 flex-row justify-center"
-              >
-                {isLoading ? <ActivityIndicator color="white" className="mr-3" /> : null}
-                <Text className="text-white font-bold text-lg tracking-widest uppercase">
-                  {isLoading ? 'Registrando...' : 'Crear Cuenta'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-          </View>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

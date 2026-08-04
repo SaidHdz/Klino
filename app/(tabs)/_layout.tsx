@@ -2,23 +2,26 @@ import React from 'react';
 import { MaterialTopTabs } from '../../components/MaterialTopTabs';
 import { LayoutDashboard, FileText, Smartphone, User } from 'lucide-react-native';
 import { View } from 'react-native';
+import { useColorScheme } from 'nativewind';
 import { useProfile } from '../../src/context/ProfileContext';
 
 export default function TabLayout() {
   const { primaryColor } = useProfile();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   return (
     <MaterialTopTabs
       tabBarPosition="bottom"
       screenOptions={{
         tabBarActiveTintColor: primaryColor,
-        tabBarInactiveTintColor: '#5A6B7E',
+        tabBarInactiveTintColor: isDark ? '#64748B' : '#5A6B7E',
         tabBarShowLabel: true,
         tabBarIndicatorStyle: { height: 0 },
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
           borderTopWidth: 1,
-          borderTopColor: '#F4F7FB',
+          borderTopColor: isDark ? '#1E293B' : '#F4F7FB',
           height: 85,
           paddingBottom: 25,
           paddingTop: 15,

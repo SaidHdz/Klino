@@ -20,17 +20,21 @@ const SIG_CANVAS_HEIGHT = 150;
 // COMPONENTE MEMOIZADO PARA SECCIONES CLÍNICAS
 const ClinicalSection = memo(({ block, idx, isPrimary, isConfirmed, onBlockChange }: any) => {
   return (
-    <View className={`${isPrimary ? 'mb-8' : 'mb-4 opacity-70'}`}>
-      <View className="flex-row items-center mb-2 px-1">
-        <View style={{ backgroundColor: block.color }} className={`${isPrimary ? 'w-2 h-5' : 'w-1 h-3'} rounded-full mr-3`} />
-        <Text style={{ color: block.color, fontSize: isPrimary ? 12 : 10 }} className="font-black uppercase tracking-widest">{block.title}</Text>
-        {isPrimary && <View className="ml-2 bg-slate-100 px-2 py-0.5 rounded-md"><Text className="text-[7px] font-bold text-slate-400 uppercase">Prioridad Médica</Text></View>}
+    <View className={`mb-4 bg-white border ${isPrimary ? 'border-red-200 shadow-[0_4px_15px_rgb(225,29,72,0.1)]' : 'border-slate-200/60 shadow-[0_2px_10px_rgb(0,0,0,0.02)]'} rounded-2xl overflow-hidden ${!isConfirmed && !isPrimary ? 'opacity-90' : ''}`}>
+      <View className={`flex-row items-center px-4 py-3 border-b ${isPrimary ? 'bg-red-50/30 border-red-100' : 'bg-slate-50/50 border-slate-100'}`}>
+        <View style={{ backgroundColor: block.color }} className="w-2 h-2 rounded-full mr-2" />
+        <Text style={{ color: '#1E293B' }} className="font-semibold text-xs tracking-wider uppercase flex-1 mr-2 flex-wrap">{block.title}</Text>
+        {isPrimary && (
+          <View className="bg-red-100 px-2 py-1 rounded-md border border-red-200 shrink-0">
+            <Text className="text-[9px] font-black text-red-600 uppercase tracking-widest text-center">Prioridad</Text>
+          </View>
+        )}
       </View>
       <TextInput 
         multiline 
         defaultValue={block.content.replace(/\[INAUDIBLE\]/gi, '[... dato no audible ...]') } 
         onEndEditing={(e) => onBlockChange(idx, e.nativeEvent.text)}
-        className={`text-klino-text leading-6 font-medium bg-slate-50/50 p-4 rounded-2xl border border-slate-50 ${isPrimary ? 'text-[16px]' : 'text-[14px]'}`} 
+        className="text-slate-700 leading-relaxed font-medium p-4 text-[14px]" 
         editable={!isConfirmed} 
         scrollEnabled={false}
         placeholderTextColor="#94A3B8"
@@ -42,7 +46,11 @@ const ClinicalSection = memo(({ block, idx, isPrimary, isConfirmed, onBlockChang
 const NoteDetailScreen = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { notes, recordsProfileId, confirmNote, updateNoteContent, doctorName, savedSignature, setSavedSignature } = useProfile();
+  const { 
+    notes, recordsProfileId, confirmNote, updateNoteContent, 
+    doctorName, doctorCedula, doctorUniversity, doctorAddress,
+    savedSignature, setSavedSignature 
+  } = useProfile();
   
   const [isAllReviewed, setIsAllReviewed] = useState(false);
   const [showSignatureModal, setShowSignatureModal] = useState(false);
@@ -177,6 +185,112 @@ const NoteDetailScreen = () => {
     await Sharing.shareAsync(uri);
   };
 
+  const handlePrescriptionPDF = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    // Extraer el plan de tratamiento de los bloques parseados
+    let treatmentPlan = '';
+    if (parsedBlocks) {
+      const planBlock = parsedBlocks.find(b => b.title.toUpperCase().includes('PLAN'));
+      if (planBlock) treatmentPlan = planBlock.content;
+    }
+    
+    // Si no hay bloques o no se encontró el plan, usar el texto completo
+    if (!treatmentPlan) {
+      treatmentPlan = textContent;
+    }
+
+    const signatureSvg = paths.length > 0 ? `<svg width="180" height="90" viewBox="0 0 ${SIG_CANVAS_WIDTH} ${SIG_CANVAS_HEIGHT}" style="display: block; margin: 0 auto;">${paths.map(p => `<path d="${p}" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />`).join('')}</svg>` : '<div style="height: 90px;"></div>';
+    
+    const html = `
+    <html>
+    <head>
+      <style>
+        @page { margin: 0; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 50px 60px; color: #1A2332; background: #fff; line-height: 1.5; margin: 0; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #1B4F9B; padding-bottom: 25px; margin-bottom: 30px; }
+        .doctor-info { flex: 2; }
+        .clinic-info { flex: 1; text-align: right; }
+        .doctor-name { font-size: 26px; font-weight: 900; color: #1B4F9B; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: -0.5px; }
+        .doctor-meta { font-size: 11px; color: #5A6B7E; font-weight: bold; margin: 3px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .patient-box { background: #F8FAFC; padding: 25px; border-radius: 12px; margin-bottom: 35px; border: 1px solid #E2E8F0; }
+        .patient-grid { display: flex; flex-wrap: wrap; }
+        .patient-item { width: 50%; margin-bottom: 15px; }
+        .label { font-size: 9px; font-weight: 800; color: #94A3B8; text-transform: uppercase; margin-bottom: 3px; letter-spacing: 0.5px; }
+        .value { font-size: 14px; font-weight: bold; color: #1A2332; }
+        .rx-container { display: flex; gap: 20px; }
+        .rx-symbol { font-size: 55px; font-weight: 900; color: #1B4F9B; line-height: 0.8; font-family: 'Georgia', serif; font-style: italic; }
+        .treatment-content { flex: 1; min-height: 400px; font-size: 15px; white-space: pre-wrap; padding-top: 10px; line-height: 1.8; color: #334155; }
+        .footer { margin-top: 60px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .signature-box { width: 280px; text-align: center; }
+        .signature-line { border-top: 1.5px solid #1A2332; width: 100%; margin-top: -15px; }
+        .qr-placeholder { width: 80px; height: 80px; border: 2px dashed #CBD5E1; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #94A3B8; text-align: center; }
+        .address-footer { font-size: 9px; color: #94A3B8; margin-top: 40px; text-align: center; text-transform: uppercase; letter-spacing: 1px; border-top: 1px solid #F1F5F9; padding-top: 15px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="doctor-info">
+          <h1 class="doctor-name">Dr. ${doctorName}</h1>
+          <p class="doctor-meta">${currentNote?.specialty || 'Medicina General'}</p>
+          <p class="doctor-meta">${doctorUniversity}</p>
+          <p class="doctor-meta">Cédula Profesional: ${doctorCedula}</p>
+        </div>
+        <div class="clinic-info">
+          <p class="doctor-meta" style="color: #1A2332;">Klino Medical Center</p>
+          <p class="doctor-meta" style="font-size: 9px; opacity: 0.7;">RECETA MÉDICA</p>
+        </div>
+      </div>
+
+      <div class="patient-box">
+        <div class="patient-grid">
+          <div class="patient-item">
+            <div class="label">Paciente</div>
+            <div class="value">${params.name || 'Paciente'}</div>
+          </div>
+          <div class="patient-item">
+            <div class="label">Fecha de Expedición</div>
+            <div class="value">${new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+          </div>
+          <div class="patient-item" style="margin-bottom: 0;">
+            <div class="label">Edad / Sexo</div>
+            <div class="value">-- Años / --</div>
+          </div>
+          <div class="patient-item" style="margin-bottom: 0;">
+            <div class="label">Peso / Talla / Temp</div>
+            <div class="value">${(vitals as any).peso || '--'} kg / ${(vitals as any).talla || '--'} m / ${(vitals as any).temp || '--'} °C</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rx-container">
+        <div class="rx-symbol">Rx</div>
+        <div class="treatment-content">${treatmentPlan}</div>
+      </div>
+
+      <div class="footer">
+        <div class="qr-placeholder">
+          VALIDACIÓN<br/>DIGITAL
+        </div>
+        <div class="signature-box">
+          <div>${signatureSvg}</div>
+          <div class="signature-line"></div>
+          <p style="margin-top: 8px; font-weight: 900; font-size: 13px; color: #1A2332;">Dr. ${doctorName}</p>
+          <p style="font-size: 9px; color: #5A6B7E; text-transform: uppercase; margin-top: -5px;">Firma del Médico</p>
+        </div>
+      </div>
+
+      <div class="address-footer">
+        ${doctorAddress} • Generado por Klino AI
+      </div>
+    </body>
+    </html>
+    `;
+
+    const { uri } = await Print.printToFileAsync({ html });
+    await Sharing.shareAsync(uri);
+  };
+
   const getCoordinates = (event: any) => {
     const { locationX, locationY } = event.nativeEvent;
     const width = canvasLayout.width || (SCREEN_WIDTH - 80);
@@ -197,21 +311,7 @@ const NoteDetailScreen = () => {
   const onTouchMove = (event: any) => {
     if (isConfirmed) return;
     const point = getCoordinates(event);
-    setPoints(prevPoints => {
-      const newPoints = [...prevPoints, point];
-      if (newPoints.length > 1) {
-        let d = `M ${newPoints[0].x},${newPoints[0].y}`;
-        for (let i = 1; i < newPoints.length - 1; i++) {
-          const midX = (newPoints[i].x + newPoints[i+1].x) / 2;
-          const midY = (newPoints[i].y + newPoints[i+1].y) / 2;
-          d += ` Q ${newPoints[i].x},${newPoints[i].y} ${midX},${midY}`;
-        }
-        const last = newPoints[newPoints.length - 1];
-        d += ` L ${last.x},${last.y}`;
-        setCurrentPath(d);
-      }
-      return newPoints;
-    });
+    setCurrentPath(prev => `${prev} L ${point.x},${point.y}`);
   };
 
   const onTouchEnd = () => {
@@ -245,29 +345,29 @@ const NoteDetailScreen = () => {
       <Header title="NOTA CLINICA" showBack={true} />
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false} removeClippedSubviews={true}>
         <View className="p-6">
-          <View className="flex-row justify-between items-center mb-8 border-b border-slate-50 pb-6">
+          <View className="flex-row justify-between items-center mb-8 border-b border-slate-200/60 pb-5">
             <View className="flex-1 mr-4">
-              <Text className="text-[20px] font-black text-klino-text tracking-tighter" numberOfLines={1}>{params.name || 'Paciente'}</Text>
-              <View className="flex-row items-center mt-1">
-                <Calendar size={10} color="#94A3B8" /><Text className="text-[10px] font-bold text-slate-400 ml-1 uppercase">{formatTimeAgo(currentNote?.time)}</Text>
-                <View className="w-1 h-1 rounded-full bg-slate-300 mx-2" /><Text className="text-[10px] font-bold text-slate-400 uppercase">ID: {params.id?.toString().slice(-4)}</Text>
+              <Text className="text-2xl font-bold text-slate-900 tracking-tight" numberOfLines={1}>{params.name || 'Paciente'}</Text>
+              <View className="flex-row items-center mt-1.5">
+                <Calendar size={12} color="#64748B" /><Text className="text-[11px] font-medium text-slate-500 ml-1">{formatTimeAgo(currentNote?.time)}</Text>
+                <View className="w-1 h-1 rounded-full bg-slate-300 mx-2" /><Text className="text-[11px] font-medium text-slate-500">ID: {params.id?.toString().slice(-4)}</Text>
               </View>
             </View>
             <TouchableOpacity 
               onPress={() => !isConfirmed && (Haptics.selectionAsync(), setIsAllReviewed(!isAllReviewed))}
-              className={`px-4 py-2.5 rounded-xl flex-row items-center border ${isConfirmed || isAllReviewed ? 'bg-klino-secondary border-klino-secondary' : 'bg-white border-slate-200'}`}
+              className={`px-3 py-2 rounded-lg flex-row items-center border ${isConfirmed || isAllReviewed ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-slate-200 shadow-sm'}`}
             >
-              <CheckCircle2 size={14} color={isConfirmed || isAllReviewed ? 'white' : '#94A3B8'} /><Text className={`text-[10px] font-black ml-2 uppercase ${isConfirmed || isAllReviewed ? 'text-white' : 'text-slate-400'}`}>{isConfirmed || isAllReviewed ? 'Revisado' : 'Pendiente'}</Text>
+              <CheckCircle2 size={14} color={isConfirmed || isAllReviewed ? '#10B981' : '#94A3B8'} /><Text className={`text-[10px] font-bold ml-1.5 uppercase tracking-wide ${isConfirmed || isAllReviewed ? 'text-emerald-600' : 'text-slate-500'}`}>{isConfirmed || isAllReviewed ? 'Revisado' : 'Pendiente'}</Text>
             </TouchableOpacity>
           </View>
 
-          <View className="mb-10 bg-slate-50/50 p-5 rounded-[28px] border border-slate-100">
-            <View className="flex-row justify-between items-center mb-4 px-1"><Text className="text-[10px] font-black text-slate-400 uppercase tracking-[2px]">Somatometría y Vitales</Text><Clock size={12} color="#CBD5E1" /></View>
+          <View className="mb-8 bg-white p-5 rounded-2xl border border-slate-200/60 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
+            <View className="flex-row justify-between items-center mb-4"><Text className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">Somatometría y Vitales</Text><Clock size={14} color="#94A3B8" /></View>
             <View className="flex-row flex-wrap justify-between">
               {Object.entries({ ta: 'T.A.', fc: 'F.C.', fr: 'F.R.', temp: 'Temp.', sat: 'Sat.', peso: 'Peso', talla: 'Talla', imc: 'IMC' }).map(([key, label]) => (
                 <View key={key} className="w-[23%] mb-3">
-                  <TextInput value={(vitals as any)[key]} onChangeText={(val) => !isConfirmed && setVitals({ ...vitals, [key]: val })} editable={!isConfirmed} placeholder="--" textAlign="center" className="bg-white border border-slate-100 rounded-xl py-2 text-klino-text font-black text-xs shadow-sm" />
-                  <Text className="text-[8px] font-bold text-slate-400 uppercase text-center mt-1.5 tracking-tighter">{label}</Text>
+                  <TextInput value={(vitals as any)[key]} onChangeText={(val) => !isConfirmed && setVitals({ ...vitals, [key]: val })} editable={!isConfirmed} placeholder="--" textAlign="center" className="bg-slate-50 border border-slate-100 rounded-lg py-2 text-slate-800 font-bold text-xs" />
+                  <Text className="text-[9px] font-medium text-slate-400 uppercase text-center mt-1.5 tracking-wide">{label}</Text>
                 </View>
               ))}
             </View>
@@ -286,16 +386,16 @@ const NoteDetailScreen = () => {
             )}
           </View>
 
-          <View className="mt-8 items-center border-t border-slate-50 pt-10">
+          <View className="mt-8 items-center border-t border-slate-200/60 pt-8">
             {!isConfirmed && (
-              <TouchableOpacity onPress={useGlobalSignature} className="bg-white px-5 py-2.5 rounded-full border border-slate-100 flex-row items-center shadow-sm mb-8">
-                <Check size={14} color="#1B4F9B" /><Text className="text-klino-primary font-black text-[9px] uppercase ml-2 tracking-widest">Usar firma guardada</Text>
+              <TouchableOpacity onPress={useGlobalSignature} className="bg-white px-5 py-2.5 rounded-full border border-slate-200 flex-row items-center shadow-[0_2px_10px_rgb(0,0,0,0.03)] mb-6">
+                <Check size={14} color="#1B4F9B" /><Text className="text-klino-primary font-semibold text-[10px] uppercase ml-2 tracking-widest">Usar firma guardada</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity onPress={() => !isConfirmed && setShowSignatureModal(true)} className={`w-72 h-36 border-2 border-dashed ${paths.length > 0 ? 'border-klino-secondary bg-klino-secondary/5' : 'border-slate-100 bg-slate-50/30'} rounded-[32px] items-center justify-center overflow-hidden`} activeOpacity={0.8}>
-              {paths.length > 0 ? (<View style={{ width: '100%', height: '100%' }}><Svg height="100%" width="100%" viewBox={`0 0 ${SIG_CANVAS_WIDTH} ${SIG_CANVAS_HEIGHT}`}>{paths.map((d, i) => (<Path key={i} d={d} fill="none" stroke="#2A7D6F" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />))}</Svg></View>) : (<View className="items-center opacity-30"><PenTool size={24} color="#5A6B7E" /><Text className="text-[10px] font-black text-slate-400 uppercase mt-3 tracking-[2px]">Firma Médica</Text></View>)}
+            <TouchableOpacity onPress={() => !isConfirmed && setShowSignatureModal(true)} className={`w-72 h-36 border ${paths.length > 0 ? 'border-klino-primary/20 bg-blue-50/10' : 'border-slate-200 bg-white'} rounded-2xl items-center justify-center overflow-hidden shadow-sm`} activeOpacity={0.8}>
+              {paths.length > 0 ? (<View style={{ width: '100%', height: '100%' }}><Svg height="100%" width="100%" viewBox={`0 0 ${SIG_CANVAS_WIDTH} ${SIG_CANVAS_HEIGHT}`}>{paths.map((d, i) => (<Path key={i} d={d} fill="none" stroke="#1B4F9B" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />))}</Svg></View>) : (<View className="items-center opacity-40"><PenTool size={20} color="#64748B" /><Text className="text-[11px] font-semibold text-slate-500 uppercase mt-2 tracking-widest">Firma Médica</Text></View>)}
             </TouchableOpacity>
-            <View className="w-48 h-[1px] bg-slate-100 mt-4" /><Text className="text-klino-text font-black text-[12px] uppercase mt-3 tracking-widest">Dr. {doctorName}</Text>
+            <View className="w-48 h-[1px] bg-slate-200 mt-4" /><Text className="text-slate-800 font-bold text-[12px] uppercase mt-3 tracking-widest">Dr. {doctorName}</Text>
           </View>
 
           <View className="mt-12 mb-20 px-2">
@@ -303,26 +403,45 @@ const NoteDetailScreen = () => {
               <TouchableOpacity 
                 onPress={handleManualSave} 
                 activeOpacity={0.8} 
-                className="bg-white border border-slate-200 p-4 rounded-2xl flex-row items-center justify-center mb-4 shadow-sm"
+                className="bg-white border border-slate-200/60 p-4 rounded-xl flex-row items-center justify-center mb-4 shadow-[0_2px_10px_rgb(0,0,0,0.02)]"
               >
-                <Save size={18} color="#1B4F9B" />
-                <Text className="text-klino-primary font-black text-xs uppercase ml-2 tracking-wider">Guardar Nota</Text>
+                <Save size={16} color="#1B4F9B" />
+                <Text className="text-klino-primary font-bold text-[12px] uppercase ml-2 tracking-widest">Guardar Cambios Locales</Text>
               </TouchableOpacity>
             )}
             
             {!isConfirmed ? (
-              <View className="flex-row space-x-3">
-                <TouchableOpacity onPress={handleConfirm} activeOpacity={0.9} className={`flex-1 p-5 rounded-[22px] items-center shadow-lg ${isAllReviewed ? 'bg-klino-secondary shadow-klino-secondary/20' : 'bg-klino-primary shadow-klino-primary/20'}`}>
-                  <Text className="text-white font-black text-xs uppercase tracking-[2px]">Finalizar y Guardar</Text>
+              <>
+                <View className="flex-row space-x-3 mt-2">
+                  <TouchableOpacity onPress={handleConfirm} activeOpacity={0.9} className={`flex-1 py-4 rounded-xl items-center justify-center shadow-[0_4px_15px_rgb(27,79,155,0.2)] ${isAllReviewed ? 'bg-klino-primary' : 'bg-klino-primary/90'}`}>
+                    <Text className="text-white font-bold text-[12px] uppercase tracking-widest">Finalizar y Guardar</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                <TouchableOpacity 
+                  onPress={handlePrescriptionPDF} 
+                  activeOpacity={0.8} 
+                  className="mt-4 bg-white py-4 rounded-xl flex-row items-center justify-center border border-slate-200 shadow-[0_2px_10px_rgb(0,0,0,0.02)]"
+                >
+                  <FileCheck size={18} color="#1B4F9B" />
+                  <Text className="text-klino-primary font-bold text-[12px] uppercase ml-2 tracking-widest">Imprimir Receta Médica</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={handlePDF} className="w-16 bg-slate-50 rounded-[22px] items-center justify-center border border-slate-100"><Download size={22} color="#1B4F9B" /></TouchableOpacity>
-              </View>
+              </>
             ) : (
-              <View className="space-y-4">
-                <View className="bg-emerald-50 p-4 rounded-2xl flex-row items-center justify-center border border-emerald-100"><ShieldCheck size={16} color="#2A7D6F" /><Text className="text-klino-secondary font-black text-[11px] uppercase ml-3 tracking-wider">CERTIFICADO Y RESGUARDADO</Text></View>
-                <TouchableOpacity onPress={handlePDF} activeOpacity={0.8} className="bg-klino-primary p-5 rounded-[22px] flex-row items-center justify-center shadow-xl shadow-klino-primary/30">
-                  <Download size={20} color="white" />
-                  <Text className="text-white font-black text-xs uppercase ml-3 tracking-[2px]">Descargar NOTA CLINICA PDF</Text>
+              <View className="space-y-3 mt-2">
+                <View className="bg-emerald-50/80 p-3 rounded-xl flex-row items-center justify-center border border-emerald-100/50"><ShieldCheck size={14} color="#10B981" /><Text className="text-emerald-700 font-bold text-[11px] uppercase ml-2 tracking-widest">Certificado y Resguardado</Text></View>
+                <TouchableOpacity onPress={handlePDF} activeOpacity={0.8} className="bg-klino-primary py-4 rounded-xl flex-row items-center justify-center shadow-[0_4px_15px_rgb(27,79,155,0.2)]">
+                  <Download size={18} color="white" />
+                  <Text className="text-white font-bold text-[12px] uppercase ml-2 tracking-widest">Descargar Nota (PDF)</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  onPress={handlePrescriptionPDF} 
+                  activeOpacity={0.8} 
+                  className="bg-white py-4 rounded-xl flex-row items-center justify-center border border-slate-200 shadow-sm"
+                >
+                  <FileCheck size={18} color="#1B4F9B" />
+                  <Text className="text-klino-primary font-bold text-[12px] uppercase ml-2 tracking-widest">Generar Receta Médica</Text>
                 </TouchableOpacity>
               </View>
             )}

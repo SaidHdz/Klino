@@ -57,7 +57,7 @@ const Header = ({ title, showBack = false, hideProfilePhoto = false }: HeaderPro
 
   return (
     <>
-      <View style={{ paddingTop: safePaddingTop }} className="bg-klino-card border-b border-klino-background z-50">
+      <View style={{ paddingTop: safePaddingTop }} className="bg-white dark:bg-slate-900 border-b border-slate-200/60 dark:border-slate-800 z-50">
         <View className="flex-row justify-between items-center px-6 py-4 h-16">
           
           {showBack ? (
@@ -74,7 +74,7 @@ const Header = ({ title, showBack = false, hideProfilePhoto = false }: HeaderPro
             <TouchableOpacity 
               onPress={() => router.push('/profile')}
               activeOpacity={0.7}
-              className="w-10 h-10 rounded-full bg-klino-background overflow-hidden border-2 border-klino-background shadow-sm"
+              className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden border border-white dark:border-slate-700 shadow-[0_2px_10px_rgb(0,0,0,0.15)]"
             >
               {profileImage ? (
                 <Image 
@@ -93,9 +93,9 @@ const Header = ({ title, showBack = false, hideProfilePhoto = false }: HeaderPro
 
           <View className="flex-1 flex-row items-center justify-center">
             {title ? (
-              <Text className="text-base font-black text-klino-text uppercase tracking-tight">{title}</Text>
+              <Text className="text-base font-bold text-slate-800 dark:text-white tracking-tight">{title}</Text>
             ) : (
-              <Text className="text-lg font-black text-klino-primary tracking-[4px]">Klino</Text>
+              <Text className="text-lg font-bold text-klino-primary tracking-tight">Klino</Text>
             )}
           </View>
 
@@ -126,15 +126,14 @@ const Header = ({ title, showBack = false, hideProfilePhoto = false }: HeaderPro
               <Pressable className="flex-1" onPress={toggleNotifications} />
             </MotiView>
 
-            {/* Panel Lateral Full Screen sin bordes redondeados */}
             <MotiView
               from={{ translateX: SCREEN_WIDTH }}
               animate={{ translateX: 0 }}
               exit={{ translateX: SCREEN_WIDTH }}
               transition={{ type: 'timing', duration: 300 }}
-              className="absolute right-0 bg-klino-card shadow-2xl"
+              className="absolute right-0 bg-white dark:bg-slate-900 shadow-[-10px_0_30px_rgb(0,0,0,0.1)] dark:shadow-[0_0_30px_rgba(0,0,0,0.5)] rounded-l-3xl border-l border-slate-200/60 dark:border-slate-800"
               style={{ 
-                width: SCREEN_WIDTH, 
+                width: SCREEN_WIDTH * 0.9, // Make it look like a slide-over instead of full screen
                 top: insets.top, 
                 height: SCREEN_HEIGHT - insets.top - TAB_BAR_ESTIMATED_HEIGHT, 
               }}
@@ -142,14 +141,14 @@ const Header = ({ title, showBack = false, hideProfilePhoto = false }: HeaderPro
               <View className="px-8 flex-1 pt-8 pb-4">
                 <View className="flex-row justify-between items-center mb-8">
                   <View>
-                    <Text className="text-2xl font-black text-klino-text tracking-tighter">Avisos</Text>
-                    <Text className="text-klino-subtext text-[10px] font-bold uppercase tracking-[2px]">Notificaciones</Text>
+                    <Text className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Avisos</Text>
+                    <Text className="text-slate-500 dark:text-slate-400 text-[10px] font-semibold uppercase tracking-widest mt-1">Notificaciones</Text>
                   </View>
                   <TouchableOpacity 
                     onPress={toggleNotifications}
-                    className="w-10 h-10 bg-klino-background rounded-full items-center justify-center border border-klino-background"
+                    className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-full items-center justify-center"
                   >
-                    <X size={20} color="#5A6B7E" />
+                    <X size={20} color="#64748B" />
                   </TouchableOpacity>
                 </View>
 
@@ -169,17 +168,17 @@ const Header = ({ title, showBack = false, hideProfilePhoto = false }: HeaderPro
                             from={{ opacity: 0, translateX: 20 }}
                             animate={{ opacity: 1, translateX: 0 }}
                             transition={{ type: 'timing', delay: 100 + (index * 80) }}
-                            className={`bg-klino-card p-5 rounded-[32px] mb-4 border shadow-sm flex-row items-center ${item.unread ? 'border-klino-primary/20 bg-blue-50/20' : 'border-klino-background'}`}
+                            className={`bg-white dark:bg-slate-800 p-4 rounded-2xl mb-3 border flex-row items-center ${item.unread ? 'border-klino-primary/30 dark:border-klino-primary/50 shadow-[0_4px_20px_rgb(27,79,155,0.08)]' : 'border-slate-100 dark:border-slate-700 shadow-[0_2px_10px_rgb(0,0,0,0.02)]'}`}
                           >
-                            <View style={{ backgroundColor: `${item.color}15` }} className="w-12 h-12 rounded-2xl items-center justify-center mr-4">
+                            <View style={{ backgroundColor: `${item.color}15` }} className="w-10 h-10 rounded-xl items-center justify-center mr-4">
                               <IconComponent size={22} color={item.color} />
                             </View>
                             <View className="flex-1">
-                              <View className="flex-row justify-between items-center">
-                                <Text className="text-[13px] font-black text-klino-text" numberOfLines={1}>{item.title}</Text>
-                                <Text className="text-[8px] font-bold text-slate-300 uppercase">{formatTimeAgo(item.time)}</Text>
+                              <View className="flex-row justify-between items-center mb-1">
+                                <Text className="text-[14px] font-semibold text-slate-900 dark:text-white" numberOfLines={1}>{item.title}</Text>
+                                <Text className="text-[10px] font-medium text-slate-400 dark:text-slate-500">{formatTimeAgo(item.time)}</Text>
                               </View>
-                              <Text className="text-[11px] text-klino-subtext font-medium mt-1 leading-4">{item.description}</Text>
+                              <Text className="text-[12px] text-slate-500 dark:text-slate-400 font-normal leading-5">{item.description}</Text>
                             </View>
                           </MotiView>
                         );
@@ -189,10 +188,10 @@ const Header = ({ title, showBack = false, hideProfilePhoto = false }: HeaderPro
                       <TouchableOpacity 
                         onPress={handleClearAll}
                         activeOpacity={0.7}
-                        className="mt-6 p-5 bg-orange-50 rounded-[28px] flex-row items-center justify-center border border-orange-100"
+                        className="mt-4 py-3 bg-red-50/50 dark:bg-red-900/20 rounded-xl flex-row items-center justify-center border border-red-100/50 dark:border-red-900/50"
                       >
-                        <Trash2 size={18} color="#E8820C" />
-                        <Text className="text-klino-accent font-black text-xs uppercase tracking-widest ml-2">Borrar todas</Text>
+                        <Trash2 size={16} color="#EF4444" />
+                        <Text className="text-red-500 font-semibold text-xs ml-2">Borrar todas</Text>
                       </TouchableOpacity>
                     </>
                   )}
@@ -203,9 +202,9 @@ const Header = ({ title, showBack = false, hideProfilePhoto = false }: HeaderPro
                       router.push('/notifications');
                     }}
                     activeOpacity={0.7}
-                    className="mt-4 p-5 bg-klino-background rounded-[28px] flex-row items-center justify-center border border-klino-background"
+                    className="mt-4 py-4 bg-slate-50 dark:bg-slate-800 rounded-2xl flex-row items-center justify-center border border-slate-200 dark:border-slate-700 shadow-sm"
                   >
-                    <Text className="text-klino-primary font-black text-xs uppercase tracking-widest">Gestionar Alertas</Text>
+                    <Text className="text-slate-700 dark:text-slate-300 font-semibold text-[13px] tracking-wide">Gestionar Alertas</Text>
                   </TouchableOpacity>
                   <View className="h-10" />
                 </ScrollView>

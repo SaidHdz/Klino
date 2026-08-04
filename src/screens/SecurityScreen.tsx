@@ -57,19 +57,19 @@ const SecurityScreen = () => {
     );
   };
 
-  const SecurityItem = ({ icon: Icon, title, sublabel, onPress }: any) => (
+  const SecurityItem = ({ icon: Icon, title, sublabel, onPress, isLast }: any) => (
     <TouchableOpacity 
       onPress={onPress}
       activeOpacity={0.7}
-      className="bg-klino-card p-5 rounded-[28px] border border-klino-background shadow-sm flex-row items-center justify-between mb-4"
+      className={`bg-white p-4 flex-row items-center justify-between ${!isLast ? 'border-b border-slate-100' : ''}`}
     >
       <View className="flex-row items-center flex-1">
-        <View className="w-12 h-12 bg-klino-background rounded-2xl justify-center items-center mr-4 border border-slate-100">
-          <Icon size={22} color="#1B4F9B" />
+        <View className="w-10 h-10 bg-slate-50 rounded-xl justify-center items-center mr-4 border border-slate-100">
+          <Icon size={20} color="#64748B" />
         </View>
         <View className="flex-1">
-          <Text className="font-black text-klino-text text-base">{title}</Text>
-          <Text className="text-xs text-klino-subtext font-medium mt-0.5">{sublabel}</Text>
+          <Text className="font-semibold text-slate-900 text-[15px]">{title}</Text>
+          <Text className="text-[12px] text-slate-500 mt-0.5 leading-4">{sublabel}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -82,47 +82,51 @@ const SecurityScreen = () => {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="p-6">
           
-          <Text className="text-klino-subtext font-bold text-[10px] uppercase tracking-[2px] mb-6 ml-1">Protección de Datos Médicos</Text>
+          <Text className="text-slate-500 font-semibold text-[11px] uppercase tracking-[1.5px] mb-2 ml-1">Protección de Datos Médicos</Text>
 
-          {/* Biometría */}
-          <View className="bg-klino-card p-5 rounded-[28px] border border-blue-50 shadow-sm flex-row items-center justify-between mb-6">
-            <View className="flex-row items-center flex-1">
-              <View className="w-12 h-12 bg-blue-50 rounded-2xl justify-center items-center mr-4">
-                <Fingerprint size={24} color="#1B4F9B" />
+          <View className="bg-white rounded-2xl border border-slate-200/60 shadow-[0_2px_10px_rgb(0,0,0,0.02)] overflow-hidden mb-6">
+            {/* Biometría */}
+            <View className="bg-white p-4 flex-row items-center justify-between border-b border-slate-100">
+              <View className="flex-row items-center flex-1">
+                <View className="w-10 h-10 bg-blue-50 rounded-xl justify-center items-center mr-4 border border-blue-50">
+                  <Fingerprint size={20} color="#3B82F6" />
+                </View>
+                <View className="flex-1">
+                  <Text className="font-semibold text-slate-900 text-[15px]">Acceso Biométrico</Text>
+                  <Text className="text-[12px] text-slate-500 mt-0.5 leading-4">Requiere Face ID o Touch ID</Text>
+                </View>
               </View>
-              <View className="flex-1">
-                <Text className="font-black text-klino-text text-base">Acceso Biométrico</Text>
-                <Text className="text-[10px] text-klino-primary font-bold uppercase">{biometrics ? 'Activado' : 'Desactivado'}</Text>
-              </View>
+              <Switch 
+                value={biometrics} 
+                onValueChange={toggleBiometrics}
+                trackColor={{ false: "#E2E8F0", true: "#34D399" }}
+                thumbColor="#FFFFFF"
+                ios_backgroundColor="#E2E8F0"
+              />
             </View>
-            <Switch 
-              value={biometrics} 
-              onValueChange={toggleBiometrics}
-              trackColor={{ false: "#E2E8F0", true: "#BEE3F8" }}
-              thumbColor={biometrics ? "#1B4F9B" : "#F8FAFC"}
+
+            <SecurityItem 
+              icon={Key} 
+              title="Cambiar Contraseña" 
+              sublabel="Última actualización: hace poco" 
+              onPress={handleChangePassword}
+            />
+
+            <SecurityItem 
+              icon={Smartphone} 
+              title="Dispositivos Vinculados" 
+              sublabel="2 sesiones activas detectadas" 
+              onPress={handleLinkedDevices}
+            />
+
+            <SecurityItem 
+              icon={History} 
+              title="Registro de Actividad" 
+              sublabel="Logs de acceso y firmas digitales" 
+              onPress={() => Alert.alert("Registro", "Visualización de logs médicos activada.")}
+              isLast={true}
             />
           </View>
-
-          <SecurityItem 
-            icon={Key} 
-            title="Cambiar Contraseña" 
-            sublabel="Última actualización: hace poco" 
-            onPress={handleChangePassword}
-          />
-
-          <SecurityItem 
-            icon={Smartphone} 
-            title="Dispositivos Vinculados" 
-            sublabel="2 sesiones activas detectadas" 
-            onPress={handleLinkedDevices}
-          />
-
-          <SecurityItem 
-            icon={History} 
-            title="Registro de Actividad" 
-            sublabel="Logs de acceso y firmas digitales" 
-            onPress={() => Alert.alert("Registro", "Visualización de logs médicos activada.")}
-          />
 
           <View className="mt-8 items-center">
             <View className="bg-emerald-50 px-4 py-2 rounded-full flex-row items-center">

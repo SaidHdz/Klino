@@ -78,24 +78,24 @@ const ModesSettingsScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-klino-background">
+    <View className="flex-1 bg-klino-background dark:bg-slate-900">
       <Header title="Ajustes de Modos" showBack={true} />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="p-6">
           
           <View className="flex-row justify-between items-center mb-6">
-            <Text className="text-klino-subtext font-semibold text-[11px] uppercase tracking-[1.5px] ml-1">MODOS DE INTELIGENCIA</Text>
-            <TouchableOpacity onPress={handleAddMode} className="bg-klino-primary/10 px-3 py-1 rounded-full flex-row items-center">
+            <Text className="text-klino-subtext dark:text-slate-400 font-semibold text-[11px] uppercase tracking-[1.5px] ml-1">MODOS DE INTELIGENCIA</Text>
+            <TouchableOpacity onPress={handleAddMode} className="bg-klino-primary/10 dark:bg-klino-primary/20 px-3 py-1 rounded-full flex-row items-center">
               <Plus size={14} color="#1B4F9B" />
-              <Text className="text-klino-primary font-bold text-[10px] ml-1 uppercase">Agregar</Text>
+              <Text className="text-klino-primary dark:text-blue-400 font-bold text-[10px] ml-1 uppercase">Agregar</Text>
             </TouchableOpacity>
           </View>
 
           {intelligenceModes.map((mode) => (
             <View 
               key={mode.id}
-              className={`bg-klino-card p-6 rounded-[32px] border border-klino-background shadow-sm mb-4 ${!mode.isActive ? 'opacity-50' : ''}`}
+              className={`bg-klino-card dark:bg-slate-800 p-6 rounded-[32px] border border-klino-background dark:border-slate-700 shadow-sm mb-4 ${!mode.isActive ? 'opacity-50' : ''}`}
             >
               <View className="flex-row justify-between items-start mb-6">
                 <View className="flex-row items-center flex-1">
@@ -106,10 +106,10 @@ const ModesSettingsScreen = () => {
                     <FolderClosed size={24} color={mode.color} />
                   </View>
                   <View className="flex-1">
-                    <Text className="font-black text-klino-text text-lg" numberOfLines={1}>{mode.name}</Text>
+                    <Text className="font-black text-klino-text dark:text-white text-lg" numberOfLines={1}>{mode.name}</Text>
                     <View className="flex-row items-center mt-1">
                       <LayoutTemplate size={12} color="#94A3B8" />
-                      <Text className="text-xs text-klino-subtext font-medium ml-1">{mode.formatName}</Text>
+                      <Text className="text-xs text-klino-subtext dark:text-slate-400 font-medium ml-1">{mode.formatName}</Text>
                     </View>
                   </View>
                 </View>
@@ -124,15 +124,15 @@ const ModesSettingsScreen = () => {
               <View className="flex-row space-x-3">
                 <TouchableOpacity 
                   onPress={() => handleEditMode(mode)}
-                  className="flex-1 bg-klino-background py-4 rounded-2xl flex-row items-center justify-center border border-slate-100"
+                  className="flex-1 bg-klino-background dark:bg-slate-700 py-4 rounded-2xl flex-row items-center justify-center border border-slate-100 dark:border-slate-600"
                 >
                   <Edit2 size={16} color="#5A6B7E" />
-                  <Text className="text-klino-subtext font-bold text-xs ml-2 uppercase tracking-widest">Editar</Text>
+                  <Text className="text-klino-subtext dark:text-slate-300 font-bold text-xs ml-2 uppercase tracking-widest">Editar</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
                   onPress={() => handleDeleteMode(mode.id, mode.name)}
-                  className="w-14 bg-orange-50 rounded-2xl items-center justify-center border border-orange-100"
+                  className="w-14 bg-orange-50 dark:bg-orange-900/20 rounded-2xl items-center justify-center border border-orange-100 dark:border-orange-900/50"
                 >
                   <Trash2 size={18} color="#E8820C" />
                 </TouchableOpacity>
@@ -140,8 +140,8 @@ const ModesSettingsScreen = () => {
             </View>
           ))}
 
-          <View className="mt-8 p-6 bg-blue-50/50 rounded-[32px] border border-dashed border-klino-primary/20 mb-10">
-            <Text className="text-klino-primary font-bold text-center text-[10px] uppercase tracking-wider leading-4">
+          <View className="mt-8 p-6 bg-blue-50/50 dark:bg-blue-900/20 rounded-[32px] border border-dashed border-klino-primary/20 dark:border-blue-500/30 mb-10">
+            <Text className="text-klino-primary dark:text-blue-400 font-bold text-center text-[10px] uppercase tracking-wider leading-4">
               Los modos activos determinan las carpetas disponibles en tu dashboard y el formato de procesamiento de la IA.
             </Text>
           </View>

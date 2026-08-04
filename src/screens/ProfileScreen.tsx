@@ -1,20 +1,37 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
-import { Settings, Sliders, Bell, CreditCard, ShieldCheck, LogOut, Mail, ChevronRight } from 'lucide-react-native';
+import { Settings, Sliders, Bell, CreditCard, ShieldCheck, LogOut, Mail, ChevronRight, Moon } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { MotiView } from 'moti';
+import { useColorScheme } from 'nativewind';
 import Header from '../components/Header';
 import { useProfile } from '../context/ProfileContext';
 import { supabase } from '../utils/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const OPTIONS = [
-  { icon: Settings, label: 'Editar Perfil', sublabel: 'Nombre, especialidad y fotografía' },
-  { icon: Sliders, label: 'Ajustes de Modos', sublabel: 'IA, formatos SOAP y hardware' },
-  { icon: Bell, label: 'Alertas', sublabel: 'Notificaciones y recordatorios' },
-  { icon: CreditCard, label: 'Suscripción', sublabel: 'Plan actual y facturación' },
-  { icon: ShieldCheck, label: 'Seguridad', sublabel: 'Autenticación biométrica y encriptación' },
+const SECTIONS = [
+  {
+    title: 'PERSONAL Y PAGOS',
+    data: [
+      { icon: Settings, label: 'Editar Perfil', sublabel: 'Nombre, especialidad y fotografía' },
+      { icon: CreditCard, label: 'Suscripción', sublabel: 'Plan actual y facturación' },
+    ]
+  },
+  {
+    title: 'SISTEMA Y HARDWARE',
+    data: [
+      { icon: Sliders, label: 'Ajustes de Modos', sublabel: 'IA, formatos SOAP y hardware' },
+      { icon: Bell, label: 'Alertas', sublabel: 'Notificaciones y recordatorios' },
+      { icon: Moon, label: 'Modo Oscuro', sublabel: 'Cambiar apariencia de la app' },
+    ]
+  },
+  {
+    title: 'PRIVACIDAD Y SEGURIDAD',
+    data: [
+      { icon: ShieldCheck, label: 'Seguridad', sublabel: 'Autenticación biométrica y encriptación' },
+    ]
+  }
 ];
 
 const ProfileScreen = () => {
@@ -22,6 +39,7 @@ const ProfileScreen = () => {
   const { doctorName, profileImage } = useProfile();
   const [isLoading, setIsLoading] = React.useState(true);
   const [userEmail, setUserEmail] = React.useState('medico@klino.med');
+  const { colorScheme, toggleColorScheme } = useColorScheme();
 
 
   React.useEffect(() => {
@@ -41,6 +59,7 @@ const ProfileScreen = () => {
       case 'Alertas': router.push('/notifications'); break;
       case 'Suscripción': router.push('/subscription'); break;
       case 'Seguridad': router.push('/security'); break;
+      case 'Modo Oscuro': toggleColorScheme(); break;
     }
   };
 
@@ -53,23 +72,21 @@ const ProfileScreen = () => {
         { 
           text: "Salir", 
           style: "destructive", 
-          onPress: async () => {
-            try {
-              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              // 1. Limpiar sesión en Supabase
-              const { error } = await supabase.auth.signOut();
-              if (error) throw error;
+          onPress: () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            
+            // Redirigir de forma atómica a la raíz inmediatamente
+            router.replace('/');
 
-              // 2. Limpiar datos locales persistentes (Opcional: puedes decidir si borrar todo o solo la sesión)
-              await AsyncStorage.removeItem('@Klino_USER_PROFILE');
-
-              // 3. Redirigir de forma atómica a la raíz
-              router.replace('/');
-            } catch (error) {
-              console.error("Error crítico cerrando sesión:", error);
-              // Fallback forzoso: aunque falle la red, sacamos al usuario
-              router.replace('/');
-            }
+            // Limpiar sesión en background sin bloquear la UI
+            setTimeout(async () => {
+              try {
+                await supabase.auth.signOut();
+                await AsyncStorage.removeItem('@Klino_USER_PROFILE');
+              } catch (e) {
+                console.log('Logout error', e);
+              }
+            }, 100);
           } 
         }
       ]
@@ -77,57 +94,51 @@ const ProfileScreen = () => {
   };
 
   const SkeletonItem = () => (
-    <View className="bg-klino-card p-5 rounded-[28px] border border-klino-background shadow-sm flex-row items-center mb-4">
+    <View className="flex-row items-center py-4 border-b border-slate-100">
       <MotiView
         from={{ opacity: 0.3 }}
         animate={{ opacity: 0.6 }}
         transition={{ type: 'timing', duration: 1000, loop: true }}
-        className="w-12 h-12 bg-klino-background rounded-2xl mr-4"
+        className="w-8 h-8 bg-slate-100 rounded-lg mr-4"
       />
       <View className="flex-1">
         <MotiView
           from={{ opacity: 0.3 }}
           animate={{ opacity: 0.6 }}
           transition={{ type: 'timing', duration: 1000, loop: true }}
-          className="h-4 bg-klino-background rounded-full w-3/4 mb-2"
+          className="h-4 bg-slate-100 rounded-full w-3/4 mb-2"
         />
         <MotiView
           from={{ opacity: 0.3 }}
           animate={{ opacity: 0.6 }}
           transition={{ type: 'timing', duration: 1000, loop: true }}
-          className="h-3 bg-klino-background rounded-full w-1/2"
+          className="h-3 bg-slate-100 rounded-full w-1/2"
         />
       </View>
     </View>
   );
 
-  const OptionItem = ({ icon: Icon, label, sublabel, index }: any) => (
-    <MotiView
-      from={{ opacity: 0, translateY: 20 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      transition={{ type: 'timing', duration: 500, delay: index * 100 }}
+  const OptionItem = ({ icon: Icon, label, sublabel, index, isLast }: any) => (
+    <TouchableOpacity 
+      onPress={() => handleOptionPress(label)}
+      activeOpacity={0.7}
+      className={`p-4 flex-row items-center justify-between bg-white dark:bg-slate-800 ${isLast ? '' : 'border-b border-slate-100 dark:border-slate-700'}`}
     >
-      <TouchableOpacity 
-        onPress={() => handleOptionPress(label)}
-        activeOpacity={0.7}
-        className="bg-klino-card p-5 rounded-[28px] border border-klino-background shadow-sm flex-row items-center justify-between mb-4"
-      >
-        <View className="flex-row items-center flex-1">
-          <View className="w-12 h-12 bg-klino-background rounded-2xl justify-center items-center mr-4 border border-slate-100">
-            <Icon size={22} color="#1B4F9B" />
-          </View>
-          <View className="flex-1">
-            <Text className="font-black text-klino-text text-base">{label}</Text>
-            <Text className="text-xs text-klino-subtext font-medium mt-0.5">{sublabel}</Text>
-          </View>
+      <View className="flex-row items-center flex-1">
+        <View className="w-8 h-8 bg-blue-50/50 rounded-lg justify-center items-center mr-4 border border-blue-100/50">
+          <Icon size={18} color="#1B4F9B" />
         </View>
-        <ChevronRight size={18} color="#CBD5E1" />
-      </TouchableOpacity>
-    </MotiView>
+        <View className="flex-1">
+          <Text className="font-semibold text-slate-900 dark:text-white text-[15px]">{label}</Text>
+          <Text className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">{sublabel}</Text>
+        </View>
+      </View>
+      <ChevronRight size={18} color="#CBD5E1" />
+    </TouchableOpacity>
   );
 
   return (
-    <View className="flex-1 bg-klino-background">
+    <View className="flex-1 bg-klino-background dark:bg-slate-900">
       <Header hideProfilePhoto={true} />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -137,35 +148,35 @@ const ProfileScreen = () => {
             <MotiView 
               from={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
-              className="bg-klino-card p-8 rounded-[40px] border border-klino-background shadow-sm items-center mb-10"
+              className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200/50 dark:border-slate-700 shadow-[0_2px_10px_rgb(0,0,0,0.02)] items-center mb-8"
             >
               <MotiView
                 from={{ opacity: 0.3 }}
                 animate={{ opacity: 0.6 }}
                 transition={{ type: 'timing', duration: 1000, loop: true }}
-                className="w-32 h-32 rounded-full bg-klino-background mb-6"
+                className="w-28 h-28 rounded-full bg-slate-100 mb-6"
               />
               <MotiView
                 from={{ opacity: 0.3 }}
                 animate={{ opacity: 0.6 }}
                 transition={{ type: 'timing', duration: 1000, loop: true }}
-                className="h-6 bg-klino-background rounded-full w-1/2 mb-4"
+                className="h-6 bg-slate-100 rounded-full w-1/2 mb-4"
               />
               <MotiView
                 from={{ opacity: 0.3 }}
                 animate={{ opacity: 0.6 }}
                 transition={{ type: 'timing', duration: 1000, loop: true }}
-                className="h-3 bg-klino-background rounded-full w-1/3"
+                className="h-3 bg-slate-100 rounded-full w-1/3"
               />
             </MotiView>
           ) : (
             <MotiView
-              from={{ opacity: 0, scale: 0.9, translateY: 10 }}
+              from={{ opacity: 0, scale: 0.95, translateY: 10 }}
               animate={{ opacity: 1, scale: 1, translateY: 0 }}
-              transition={{ type: 'timing', duration: 600 }}
-              className="bg-klino-card p-8 rounded-[40px] border border-klino-background shadow-sm items-center mb-10"
+              transition={{ type: 'timing', duration: 500 }}
+              className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200/50 dark:border-slate-700 shadow-[0_2px_10px_rgb(0,0,0,0.02)] items-center mb-8"
             >
-              <View className="w-32 h-32 rounded-full border-4 border-klino-background overflow-hidden mb-6 shadow-md">
+              <View className="w-28 h-28 rounded-full border border-slate-200 dark:border-slate-600 overflow-hidden mb-5 shadow-sm">
                 {profileImage ? (
                   <Image 
                     source={{ uri: profileImage }}
@@ -178,43 +189,56 @@ const ProfileScreen = () => {
                   />
                 )}
               </View>
-              <Text className="text-2xl font-black text-klino-text uppercase tracking-tighter">{doctorName}</Text>
-              <Text className="text-klino-primary font-black uppercase tracking-[2px] text-[10px] mt-1.5">
+              <Text className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{doctorName}</Text>
+              <Text className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-widest text-[10px] mt-1.5">
                 Cardiólogo Especialista
               </Text>
               
-              <View className="flex-row items-center mt-6">
-                <View className="flex-row items-center bg-klino-background px-4 py-2 rounded-full border border-slate-100">
-                  <Mail size={12} color="#5A6B7E" />
-                  <Text className="ml-2 text-[10px] text-klino-subtext font-bold uppercase tracking-wider">{userEmail}</Text>
+              <View className="flex-row items-center mt-5">
+                <View className="flex-row items-center bg-slate-100/50 dark:bg-slate-700/50 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-600">
+                  <Mail size={12} color="#64748B" />
+                  <Text className="ml-2 text-[11px] text-slate-500 dark:text-slate-300 font-semibold">{userEmail}</Text>
                 </View>
               </View>
             </MotiView>
           )}
 
-          <View className="mb-8">
-            <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 300 }}>
-              <Text className="text-klino-subtext font-semibold text-[11px] uppercase tracking-[1.5px] mb-2 ml-1">CONFIGURACIÓN DEL PORTAL</Text>
-            </MotiView>
-            
-            {isLoading ? (
-              <>
-                <SkeletonItem />
-                <SkeletonItem />
-                <SkeletonItem />
-              </>
-            ) : (
-              OPTIONS.map((item, index) => (
-                <OptionItem key={item.label} {...item} index={index} />
-              ))
-            )}
-          </View>
+          {isLoading ? (
+            <View className="mb-8">
+              <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 100 }}>
+                <Text className="text-slate-500 dark:text-slate-400 font-semibold text-[11px] uppercase tracking-[1.5px] mb-2 ml-2">CARGANDO...</Text>
+              </MotiView>
+              <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 200 }}>
+                <View className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-700 shadow-[0_2px_10px_rgb(0,0,0,0.02)] overflow-hidden px-4">
+                  <SkeletonItem />
+                  <SkeletonItem />
+                  <SkeletonItem />
+                </View>
+              </MotiView>
+            </View>
+          ) : (
+            SECTIONS.map((section, sIndex) => (
+              <View key={section.title} className="mb-8">
+                <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 100 + (sIndex * 100) }}>
+                  <Text className="text-slate-500 dark:text-slate-400 font-semibold text-[11px] uppercase tracking-[1.5px] mb-2 ml-2">{section.title}</Text>
+                </MotiView>
+                
+                <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 200 + (sIndex * 100) }}>
+                  <View className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-700 shadow-[0_2px_10px_rgb(0,0,0,0.02)] overflow-hidden">
+                    {section.data.map((item, index) => (
+                      <OptionItem key={item.label} {...item} index={index} isLast={index === section.data.length - 1} />
+                    ))}
+                  </View>
+                </MotiView>
+              </View>
+            ))
+          )}
 
           {!isLoading && (
-            <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 600, delay: 500 }}>
-              <TouchableOpacity onPress={handleLogout} className="flex-row items-center justify-center p-6 bg-orange-50 rounded-[32px] border border-orange-100 mb-24" activeOpacity={0.7}>
-                <LogOut size={20} color="#E8820C" />
-                <Text className="ml-3 text-klino-accent font-black uppercase tracking-widest text-sm">Cerrar Sesión Segura</Text>
+            <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 300 }}>
+              <TouchableOpacity onPress={handleLogout} className="flex-row items-center justify-center py-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-700 shadow-[0_2px_10px_rgb(0,0,0,0.02)] mb-6" activeOpacity={0.7}>
+                <LogOut size={18} color="#EF4444" />
+                <Text className="ml-2 text-red-500 dark:text-red-400 font-semibold text-[15px]">Cerrar Sesión Segura</Text>
               </TouchableOpacity>
             </MotiView>
           )}

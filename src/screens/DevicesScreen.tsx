@@ -76,196 +76,206 @@ const DevicesScreen = () => {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         <View className="p-6">
           
-          <MotiView from={{ opacity: 0, translateY: -10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 600 }} className="mb-8">
-            <Text className="text-3xl font-black text-klino-text tracking-tighter">Hardware</Text>
-            <Text className="text-klino-subtext font-medium mt-1">Configuración y estado del dispositivo Klino</Text>
+          <MotiView from={{ opacity: 0, translateY: -10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 600 }} className="mb-6">
+            <Text className="text-3xl font-bold text-slate-900 tracking-tight">Hardware</Text>
+            <Text className="text-slate-500 font-medium mt-1">Configuración y estado del dispositivo Klino</Text>
           </MotiView>
 
-          <MotiView from={{ opacity: 0, scale: 0.95, translateY: 20 }} animate={{ opacity: 1, scale: 1, translateY: 0 }} transition={{ type: 'timing', duration: 700, delay: 300 }} className="bg-klino-card p-6 rounded-[32px] border border-klino-background shadow-sm mb-6 relative">
+          <MotiView from={{ opacity: 0, scale: 0.95, translateY: 20 }} animate={{ opacity: 1, scale: 1, translateY: 0 }} transition={{ type: 'timing', duration: 700, delay: 300 }} className="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-[0_2px_10px_rgb(0,0,0,0.02)] mb-6 relative">
             <View className="flex-row justify-between items-start mb-6">
-              <View className="w-20 h-20 bg-klino-text rounded-3xl justify-center items-center shadow-xl shadow-klino-text/20">
-                <Cpu size={40} color="#1B4F9B" strokeWidth={1.5} />
-                <View className="absolute bottom-2 right-2 w-2 h-2 rounded-full bg-klino-secondary" />
+              <View className="w-16 h-16 bg-slate-50 rounded-2xl border border-slate-100 justify-center items-center shadow-sm">
+                <Cpu size={32} color="#1B4F9B" strokeWidth={1.5} />
+                <View className="absolute bottom-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white" />
               </View>
-              <View className="bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+              <View className="bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100/50">
                 <Text className="text-emerald-600 text-[10px] font-bold uppercase tracking-widest">En Línea</Text>
               </View>
             </View>
 
-            <View className="mb-8">
-              <Text className="text-2xl font-black text-klino-text uppercase tracking-tighter">Prototipo Klino</Text>
-              <Text className="text-[10px] text-klino-subtext font-bold uppercase tracking-[2px] mt-1">Seeed Studio XIAO ESP32-S3</Text>
-              <Text className="text-klino-secondary text-[10px] font-bold uppercase mt-1 tracking-tight">Estado: Listo para grabar (Micrófono activo)</Text>
+            <View className="mb-6">
+              <Text className="text-[22px] font-bold text-slate-900 tracking-tight">Prototipo Klino</Text>
+              <Text className="text-[11px] text-slate-400 font-medium mt-1">Seeed Studio XIAO ESP32-S3</Text>
+              <Text className="text-emerald-600 text-[11px] font-bold mt-2">Estado: Listo para grabar (Micrófono activo)</Text>
             </View>
 
             <View className="space-y-3">
               <TouchableOpacity 
                 onPress={handleSync} 
                 activeOpacity={0.7}
-                className="w-full bg-klino-primary p-5 rounded-2xl items-center flex-row justify-center"
+                className="w-full bg-klino-primary py-3.5 rounded-xl items-center flex-row justify-center shadow-[0_4px_15px_rgb(27,79,155,0.2)]"
               >
-                <Text className="text-white font-black text-xs uppercase tracking-widest">
-                  Sincronizar
-                </Text>
+                <Text className="text-white font-bold text-[13px] uppercase tracking-widest">Sincronizar</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
                 onPress={() => handleAction("Vincular")} 
                 activeOpacity={0.7}
-                className="w-full bg-transparent p-5 rounded-2xl items-center border-[1.5px] border-klino-primary mt-1"
+                className="w-full bg-slate-50 py-3.5 rounded-xl items-center border border-slate-200 mt-2"
               >
-                <Text className="text-klino-primary font-black text-xs uppercase tracking-widest">Vincular Nuevo Dispositivo</Text>
+                <Text className="text-slate-600 font-bold text-[12px] uppercase tracking-widest">Vincular Nuevo Dispositivo</Text>
               </TouchableOpacity>
             </View>
-            <Text className="absolute bottom-4 right-6 text-[8px] text-slate-300 font-black uppercase tracking-widest">Firmware v4.1</Text>
+            <Text className="absolute bottom-4 right-5 text-[9px] text-slate-400 font-semibold uppercase tracking-widest">Firmware v4.1</Text>
           </MotiView>
 
-          <View className="space-y-4 mb-8">
-            <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ delay: 600 }}>
-              <View className="bg-klino-card p-5 rounded-3xl border border-klino-background shadow-sm flex-row items-center mb-4">
-                <View className="w-12 h-12 bg-blue-50 rounded-2xl justify-center items-center mr-4">
-                  <Bluetooth size={24} color="#1B4F9B" />
+          <View className="mb-6">
+            <Text className="text-slate-500 font-semibold text-[11px] uppercase tracking-[1.5px] mb-2 ml-1">ESTADO DEL SISTEMA</Text>
+            <View className="bg-white rounded-2xl border border-slate-200/60 shadow-[0_2px_10px_rgb(0,0,0,0.02)] overflow-hidden">
+              <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ delay: 600 }}>
+                <View className="p-4 border-b border-slate-100 flex-row items-center">
+                  <View className="w-10 h-10 bg-blue-50 rounded-xl justify-center items-center mr-4">
+                    <Bluetooth size={20} color="#1B4F9B" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="font-semibold text-slate-900 text-[15px]">Conectado</Text>
+                    <Text className="text-[12px] text-slate-500 mt-0.5">Latencia: 24ms • Canal Seguro</Text>
+                  </View>
+                </View>
+              </MotiView>
+
+              <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ delay: 700 }}>
+                <View className="p-4 border-b border-slate-100">
+                  <View className="flex-row items-center justify-between mb-2">
+                    <View className="flex-row items-center">
+                      <View className="w-10 h-10 bg-emerald-50 rounded-xl justify-center items-center mr-4">
+                        <BatteryFull size={20} color="#10B981" />
+                      </View>
+                      <Text className="font-semibold text-slate-900 text-[15px]">Batería</Text>
+                    </View>
+                    <Text className="font-bold text-emerald-600 text-base">87%</Text>
+                  </View>
+                  <View className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1">
+                    <MotiView from={{ width: '0%' }} animate={{ width: '87%' }} transition={{ type: 'timing', duration: 1500, delay: 900 }} className="h-full bg-emerald-500 rounded-full" />
+                  </View>
+                </View>
+              </MotiView>
+
+              <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ delay: 800 }}>
+                <View className="p-4">
+                  <View className="flex-row items-center justify-between mb-2">
+                    <View className="flex-row items-center flex-1">
+                      <View className="w-10 h-10 bg-blue-50 rounded-xl justify-center items-center mr-4">
+                        <HardDrive size={20} color="#1B4F9B" />
+                      </View>
+                      <Text className="font-semibold text-slate-900 text-[15px] flex-1" numberOfLines={1}>Alm. Local (Micro SD)</Text>
+                    </View>
+                    <Text className="font-bold text-slate-700 ml-2">14.2 GB</Text>
+                  </View>
+                  <View className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1">
+                    <MotiView from={{ width: '0%' }} animate={{ width: '45%' }} transition={{ type: 'timing', duration: 1500, delay: 1000 }} className="h-full bg-klino-primary rounded-full" />
+                  </View>
+                  <Text className="text-[10px] text-slate-400 font-medium mt-2">Respaldo: ~420 horas de audio médico</Text>
+                </View>
+              </MotiView>
+            </View>
+          </View>
+
+          <View className="mb-24">
+            <Text className="text-slate-500 font-semibold text-[11px] uppercase tracking-[1.5px] mb-2 ml-1">REGISTRO DE CONECTIVIDAD</Text>
+            <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', delay: 1100 }} className="bg-white rounded-2xl border border-slate-200/60 shadow-[0_2px_10px_rgb(0,0,0,0.02)] overflow-hidden">
+              <View className="flex-row items-center p-4 border-b border-slate-100">
+                <View className="w-8 h-8 rounded-full bg-emerald-50 items-center justify-center mr-3">
+                  <CheckCircle2 size={16} color="#10B981" />
                 </View>
                 <View className="flex-1">
-                  <Text className="font-black text-klino-text text-base">Conectado</Text>
-                  <Text className="text-xs text-klino-subtext font-medium">Latencia: 24ms • Canal Seguro</Text>
+                  <Text className="text-slate-900 font-medium text-[14px]">Sincronización completada</Text>
+                  <Text className="text-slate-400 text-[11px] mt-0.5">Hoy, 10:30 AM</Text>
                 </View>
               </View>
-            </MotiView>
-
-            <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ delay: 750 }}>
-              <View className="bg-klino-card p-5 rounded-3xl border border-klino-background shadow-sm mb-4">
-                <View className="flex-row items-center justify-between mb-3">
-                  <View className="flex-row items-center">
-                    <View className="w-10 h-10 bg-emerald-50 rounded-xl justify-center items-center mr-3">
-                      <BatteryFull size={20} color="#2A7D6F" />
-                    </View>
-                    <Text className="font-black text-klino-text text-base">Batería</Text>
-                  </View>
-                  <Text className="font-black text-klino-secondary text-lg">87%</Text>
+              <View className="flex-row items-center p-4">
+                <View className="w-8 h-8 rounded-full bg-blue-50 items-center justify-center mr-3">
+                  <Bluetooth size={16} color="#1B4F9B" />
                 </View>
-                <View className="w-full h-2 bg-klino-background rounded-full overflow-hidden">
-                  <MotiView from={{ width: '0%' }} animate={{ width: '87%' }} transition={{ type: 'timing', duration: 1500, delay: 900 }} className="h-full bg-klino-secondary rounded-full" />
+                <View className="flex-1">
+                  <Text className="text-slate-900 font-medium text-[14px]">Conexión establecida</Text>
+                  <Text className="text-slate-400 text-[11px] mt-0.5">Hoy, 09:15 AM</Text>
                 </View>
-              </View>
-            </MotiView>
-
-            <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ delay: 900 }}>
-              <View className="bg-klino-card p-5 rounded-3xl border border-klino-background shadow-sm">
-                <View className="flex-row items-center justify-between mb-3">
-                  <View className="flex-row items-center flex-1">
-                    <View className="w-10 h-10 bg-blue-50 rounded-xl justify-center items-center mr-3">
-                      <HardDrive size={20} color="#1B4F9B" />
-                    </View>
-                    <Text className="font-black text-klino-text text-sm flex-1" numberOfLines={1}>Alm. Local (Micro SD)</Text>
-                  </View>
-                  <Text className="font-black text-klino-text ml-2">14.2 GB</Text>
-                </View>
-                <View className="w-full h-2 bg-klino-background rounded-full overflow-hidden">
-                  <MotiView from={{ width: '0%' }} animate={{ width: '45%' }} transition={{ type: 'timing', duration: 1500, delay: 1000 }} className="h-full bg-klino-primary rounded-full" />
-                </View>
-                <Text className="text-[9px] text-klino-subtext font-bold uppercase tracking-tight mt-3">Respaldo: ~420 horas de audio médico</Text>
               </View>
             </MotiView>
           </View>
 
-          <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', delay: 1100 }} className="bg-klino-card p-6 rounded-[32px] border border-klino-background shadow-sm mb-24">
-            <Text className="text-lg font-black text-klino-text mb-6">Registro de Conectividad</Text>
-            <View>
-              <View className="flex-row items-center py-4 border-b border-klino-background">
-                <CheckCircle2 size={16} color="#2A7D6F" />
-                <View className="ml-4 flex-1">
-                  <Text className="text-klino-text font-bold text-xs">Sincronización completada</Text>
-                  <Text className="text-klino-subtext text-[10px]">Hoy, 10:30 AM</Text>
-                </View>
-              </View>
-              <View className="flex-row items-center py-4">
-                <Bluetooth size={16} color="#1B4F9B" />
-                <View className="ml-4 flex-1">
-                  <Text className="text-klino-text font-bold text-xs">Conexión establecida</Text>
-                  <Text className="text-klino-subtext text-[10px]">Hoy, 09:15 AM</Text>
-                </View>
-              </View>
-            </View>
-          </MotiView>
-
         </View>
       </ScrollView>
 
-      {/* MODAL DE SINCRONIZACIÓN */}
       <Modal
         visible={showSyncModal}
         transparent={true}
-        animationType="fade"
+        animationType="none"
         onRequestClose={() => setShowSyncModal(false)}
       >
-        <View className="flex-1 bg-klino-text/80 justify-center items-center px-6">
+        <View className="flex-1 bg-black/40 justify-end items-center">
           <MotiView
-            from={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-klino-card w-full rounded-[40px] p-8 shadow-2xl overflow-hidden"
+            from={{ translateY: SCREEN_HEIGHT, opacity: 1 }}
+            animate={{ translateY: 0, opacity: 1 }}
+            exit={{ translateY: SCREEN_HEIGHT, opacity: 1 }}
+            transition={{ type: 'timing', duration: 400 }}
+            className="bg-white w-full h-[550px] rounded-t-3xl p-8 shadow-[0_-10px_40px_rgb(0,0,0,0.1)]"
           >
             <View className="flex-row justify-between items-center mb-6">
               <View>
-                <Text className="text-2xl font-black text-klino-text tracking-tighter">Sincronizar</Text>
-                <Text className="text-klino-subtext text-[10px] font-bold uppercase tracking-[2px]">Buscando dispositivos</Text>
+                <Text className="text-2xl font-bold text-slate-900 tracking-tight">Sincronizar</Text>
+                <Text className="text-slate-500 text-[11px] font-semibold mt-1">Buscando dispositivos cercanos</Text>
               </View>
               <TouchableOpacity 
                 onPress={() => setShowSyncModal(false)}
-                className="w-10 h-10 bg-klino-background rounded-full items-center justify-center"
+                className="w-8 h-8 bg-slate-100 rounded-full items-center justify-center"
               >
-                <X size={20} color="#5A6B7E" />
+                <X size={18} color="#64748B" />
               </TouchableOpacity>
             </View>
 
             {isSearching ? (
-              <View className="items-center py-12">
+              <View className="flex-1 items-center justify-center py-12">
                 <MotiView
                   from={{ rotate: '0deg' }}
                   animate={{ rotate: '360deg' }}
                   transition={{ loop: true, repeatReverse: false, duration: 2000, type: 'timing' }}
                 >
-                  <RefreshCw size={48} color="#1B4F9B" strokeWidth={1.5} />
+                  <RefreshCw size={40} color="#1B4F9B" strokeWidth={1.5} />
                 </MotiView>
-                <Text className="text-klino-subtext font-bold text-xs mt-6 uppercase tracking-widest text-center">
-                  Escaneando frecuencias Klino...
+                <Text className="text-slate-500 font-semibold text-xs mt-6 uppercase tracking-widest text-center">
+                  Escaneando frecuencias...
                 </Text>
               </View>
             ) : (
-              <View className="py-4">
+              <View className="flex-1">
                 {foundDevices.length === 0 ? (
-                  <Text className="text-klino-subtext text-center py-8">No se encontraron dispositivos cercanos</Text>
+                  <View className="flex-1 items-center justify-center">
+                    <Text className="text-slate-400 font-medium text-center">No se encontraron dispositivos</Text>
+                  </View>
                 ) : (
-                  foundDevices.map((device, index) => (
-                    <MotiView
-                      key={device.id}
-                      from={{ opacity: 0, translateX: -20 }}
-                      animate={{ opacity: 1, translateX: 0 }}
-                      transition={{ delay: index * 100 }}
-                    >
-                      <TouchableOpacity
-                        onPress={() => handleConnectDevice(device)}
-                        className={`flex-row items-center p-4 mb-3 rounded-2xl border ${selectedDevice === device.id ? 'border-klino-primary bg-blue-50' : 'border-klino-background bg-klino-background/30'}`}
+                  <ScrollView className="flex-1 mb-4" showsVerticalScrollIndicator={false}>
+                    {foundDevices.map((device, index) => (
+                      <MotiView
+                        key={device.id}
+                        from={{ opacity: 0, translateY: 10 }}
+                        animate={{ opacity: 1, translateY: 0 }}
+                        transition={{ delay: index * 100 }}
                       >
-                        <View className={`w-10 h-10 rounded-xl items-center justify-center mr-4 ${selectedDevice === device.id ? 'bg-klino-primary' : 'bg-white'}`}>
-                          <Smartphone size={20} color={selectedDevice === device.id ? 'white' : '#5A6B7E'} />
-                        </View>
-                        <View className="flex-1">
-                          <Text className="font-black text-klino-text text-sm">{device.name || 'Dispositivo Desconocido'}</Text>
-                          <Text className="text-[10px] text-klino-subtext font-medium">RSSI: {device.rssi} • ID: {device.id.slice(0, 8)}</Text>
-                        </View>
-                        {selectedDevice === device.id && <CheckCircle2 size={18} color="#1B4F9B" />}
-                      </TouchableOpacity>
-                    </MotiView>
-                  ))
+                        <TouchableOpacity
+                          onPress={() => handleConnectDevice(device)}
+                          className={`flex-row items-center p-4 mb-3 rounded-2xl border ${selectedDevice === device.id ? 'border-klino-primary bg-blue-50/50 shadow-sm' : 'border-slate-200 bg-white'}`}
+                        >
+                          <View className={`w-10 h-10 rounded-xl items-center justify-center mr-4 ${selectedDevice === device.id ? 'bg-klino-primary' : 'bg-slate-50 border border-slate-200'}`}>
+                            <Smartphone size={20} color={selectedDevice === device.id ? 'white' : '#64748B'} />
+                          </View>
+                          <View className="flex-1">
+                            <Text className="font-semibold text-slate-900 text-[15px]">{device.name || 'Dispositivo Desconocido'}</Text>
+                            <Text className="text-[11px] text-slate-500 mt-0.5">RSSI: {device.rssi} • ID: {device.id.slice(0, 8)}</Text>
+                          </View>
+                          {selectedDevice === device.id && <CheckCircle2 size={18} color="#1B4F9B" />}
+                        </TouchableOpacity>
+                      </MotiView>
+                    ))}
+                  </ScrollView>
                 )}
 
                 <TouchableOpacity 
                   onPress={handleSearchDevices}
-                  className="mt-4 flex-row items-center justify-center p-4 bg-klino-background rounded-2xl"
+                  className="mt-2 py-4 flex-row items-center justify-center bg-slate-50 border border-slate-200 rounded-xl"
                 >
-                  <Search size={16} color="#1B4F9B" />
-                  <Text className="text-klino-primary font-black text-xs uppercase tracking-widest ml-2">Buscar de nuevo</Text>
+                  <Search size={16} color="#64748B" />
+                  <Text className="text-slate-600 font-bold text-[12px] uppercase tracking-widest ml-2">Buscar de nuevo</Text>
                 </TouchableOpacity>
               </View>
             )}

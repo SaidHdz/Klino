@@ -12,7 +12,7 @@ module.exports = {
         klino: {
           primary: "#1B4F9B",    // Azul cobalto profundo
           secondary: "#2A7D6F",  // Verde salvia / teal
-          background: "#F4F7FB", // Blanco clínico frío
+          background: "#F2F2F7", // Gris claro clásico de iOS
           card: "#FFFFFF",       // Blanco puro
           accent: "#E8820C",     // Naranja ámbar suave
           text: "#1A2332",       // Casi negro azulado
