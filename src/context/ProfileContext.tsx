@@ -199,7 +199,8 @@ interface ProfileContextType {
   addNote: (profileId: string, note: ClinicalNote) => Promise<void>;
   deleteNote: (profileId: string, noteId: string) => Promise<void>;
   deleteMultipleNotes: (profileId: string, noteIds: string[]) => Promise<void>;
-  updateNoteContent: (profileId: string, noteId: string, content: string) => Promise<void>;
+  updateNoteContent: (profileId: string, noteId: string, content: string, name?: string) => Promise<void>;
+  updatePatientName: (profileId: string, oldName: string, newName: string) => Promise<void>;
   syncWithCloud: () => Promise<void>;
   isSyncing: boolean;
   appSettings: AppSettings;
@@ -238,6 +239,42 @@ const INITIAL_NOTES: Record<string, ClinicalNote[]> = {
         imc: '25.2'
       },
       transcription: "**ANTECEDENTES PERSONALES PATOLÓGICOS:**\nNiega enfermedades crónico degenerativas previas. Sin alergias conocidas. Traumatismos negados.\n\n**PADECIMIENTO ACTUAL:**\nPaciente masculino que acude por presentar cefalea de intensidad moderada a severa (7/10) de 3 días de evolución, localizada en región occipital, que cede parcialmente con analgésicos comunes.\n\n**EXPLORACIÓN FÍSICA:**\nPaciente consciente, orientado. Pupilas isocóricas normorreflécticas. Exploración neurológica sin alteraciones. Cuello sin rigidez.\n\n**IMPRESIÓN DIAGNÓSTICA:**\nCefalea tensional por estrés laboral.\n\n**PLAN:**\n1. Reposo relativo.\n2. Paracetamol 500mg cada 8 hrs por 3 días.\n3. Cita abierta a urgencias en caso de no presentar mejoría o agregar signos de alarma."
+    },
+    {
+      id: 'mock-prueba-1',
+      name: 'Paciente de Prueba',
+      specialty: 'Medicina General',
+      status: 'reviewed',
+      statusText: 'FIRMADA',
+      time: Date.now() - 86400000 * 3, // Hace 3 días
+      specialtyColor: '#1F5F4B',
+      vitals: {
+        ta: '135/88',
+        fc: '82',
+        fr: '18',
+        temp: '37.1',
+        sat: '96%',
+        peso: '88.5',
+        talla: '1.72',
+        imc: '29.9'
+      },
+      transcription: "**FICHA DE IDENTIFICACIÓN:**\nPaciente masculino de 58 años de edad, originario de Monterrey, empleado administrativo.\n\n**ANTECEDENTES HEREDOFAMILIARES:**\nPadre finado por complicaciones de Diabetes Mellitus tipo 2. Madre viva con hipertensión arterial en control.\n\n**ANTECEDENTES PERSONALES PATOLÓGICOS:**\nHipertensión arterial sistémica diagnosticada hace 5 años, en tratamiento con Losartán 50mg cada 24 horas. Niega alergias.\n\n**PADECIMIENTO ACTUAL:**\nAcude a consulta de seguimiento refiriendo malestar general y mareos ocasionales matutinos. Refiere falta de apego a dieta en el último mes.\n\n**EXPLORACIÓN FÍSICA:**\nPaciente consciente, alerta. Mucosas orales semi-hidratadas. Cardiopulmonar sin alteraciones. Abdomen globoso a expensas de panículo adiposo, blando, depresible, sin megalias. Extremidades sin edema, pulsos distales presentes.\n\n**IMPRESIÓN DIAGNÓSTICA:**\nHipertensión Arterial Sistémica descontrolada. Sobrepeso (IMC 29.9).\n\n**PLAN:**\n1. Continuar Losartán 50mg cada 24 hrs.\n2. Iniciar bitácora de presión arterial por 14 días.\n3. Restricción estricta de sodio en dieta.\n4. Cita de revaloración en 2 semanas con resultados de bitácora y Química Sanguínea de 6 elementos."
+    },
+    {
+      id: 'mock-prueba-2',
+      name: 'Paciente de Prueba',
+      specialty: 'Medicina General',
+      status: 'pending',
+      statusText: 'PENDIENTE',
+      time: Date.now(), // Hoy
+      specialtyColor: '#1F5F4B',
+      vitals: {
+        ta: '128/82',
+        fc: '74',
+        peso: '87.0',
+        imc: '29.4'
+      },
+      transcription: "**PADECIMIENTO ACTUAL:**\nAcude a revisión de bitácora de presión tras dos semanas de ajuste dietético. Refiere sentirse mucho mejor, niega cefaleas o mareos recientes. Trae bitácora con promedios matutinos de 125/80 mmHg.\n\n**EXPLORACIÓN FÍSICA:**\nPaciente con buen estado de hidratación, ruidos cardíacos rítmicos de buen tono e intensidad. Pulmones limpios. TA en consultorio 128/82 mmHg.\n\n**IMPRESIÓN DIAGNÓSTICA:**\nHipertensión Arterial Sistémica en adecuado control actual.\n\n**PLAN:**\n1. Mantener dosis actual de Losartán 50mg.\n2. Felicitar por apego a dieta y reducción de 1.5kg de peso.\n3. Cita abierta o en 3 meses para seguimiento rutinario."
     }
   ],
   '2': [],
@@ -506,14 +543,26 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
     } catch (e) { console.error("Error borrando grupo de notas en Supabase", e); }
   };
 
-  const updateNoteContent = async (profileId: string, noteId: string, content: string) => {
+  const updateNoteContent = async (profileId: string, noteId: string, content: string, name?: string) => {
     setNotes(prev => ({
       ...prev,
-      [profileId]: (prev[profileId] || []).map(n => n.id === noteId ? { ...n, transcription: content } : n)
+      [profileId]: (prev[profileId] || []).map(n => n.id === noteId ? { ...n, transcription: content, ...(name ? { name } : {}) } : n)
     }));
     try {
-      await supabase.from('clinical_records').update({ soap_note_text: content }).eq('id', noteId);
+      const updates: any = { soap_note_text: content };
+      if (name) updates.patient_name = name;
+      await supabase.from('clinical_records').update(updates).eq('id', noteId);
     } catch (e) { console.error("Error actualizando en Supabase", e); }
+  };
+
+  const updatePatientName = async (profileId: string, oldName: string, newName: string) => {
+    setNotes(prev => ({
+      ...prev,
+      [profileId]: (prev[profileId] || []).map(n => n.name === oldName ? { ...n, name: newName } : n)
+    }));
+    try {
+      await supabase.from('clinical_records').update({ patient_name: newName }).eq('patient_name', oldName);
+    } catch (e) { console.error("Error actualizando nombre de paciente en Supabase", e); }
   };
 
   const updateIntelligenceMode = (id: string, updates: Partial<IntelligenceMode>) => setIntelligenceModes(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
@@ -570,7 +619,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       profileImage, setProfileImage, userId, dashboardProfileId, setDashboardProfileId,
       recordsProfileId, setRecordsProfileId, intelligenceModes, updateIntelligenceMode,
       deleteIntelligenceMode, addIntelligenceMode, notes, confirmNote, addNote,
-      deleteNote, deleteMultipleNotes, updateNoteContent, syncWithCloud, isSyncing, appSettings,
+      deleteNote, deleteMultipleNotes, updateNoteContent, updatePatientName, syncWithCloud, isSyncing, appSettings,
       updateSettings, notificationsList, markNotificationRead, deleteNotification,
       clearAllNotifications, addNotification, savedSignature, setSavedSignature,
       resetProfile, logout

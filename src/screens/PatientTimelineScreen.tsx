@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { View, SafeAreaView, TouchableOpacity, ScrollView, Platform, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, SafeAreaView, TouchableOpacity, ScrollView, Platform, StyleSheet, TextInput } from 'react-native';
 import { ArrowLeft, Search, AlertTriangle, ChevronDown, Mic, Pencil, Lock } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { KLINO_COLORS } from '../constants/theme';
 import { KlinoText } from '../components/common/KlinoText';
+import { useProfile } from '../context/ProfileContext';
 
 import { FadingScrollContainer } from '../components/common/FadingScrollContainer';
 
@@ -13,7 +14,43 @@ const ALL_TABS: TabType[] = ['Resumen', 'Historia clínica', 'Notas de evolució
 
 export default function PatientTimelineScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const initialPatientName = Array.isArray(params.patientName) ? params.patientName[0] : (params.patientName || 'Paciente Nuevo');
+  
+  const { notes, recordsProfileId, updatePatientName } = useProfile();
+  const [currentName, setCurrentName] = useState(initialPatientName);
+  
+  // Obtener todas las notas del paciente seleccionado
+  const currentNotes = (recordsProfileId && recordsProfileId !== 'all') 
+    ? (notes[recordsProfileId] || []).map(n => ({ ...n, profileId: recordsProfileId })) 
+    : Object.entries(notes).flatMap(([pId, pNotes]) => pNotes.map(n => ({ ...n, profileId: pId })));
+    
+  const patientNotes = currentNotes
+    .filter(n => n.name === currentName)
+    .sort((a, b) => Number(b.time) - Number(a.time));
+
   const [activeTab, setActiveTab] = useState<TabType>('Resumen');
+  
+  const getInitials = (name: string) => {
+    if (!name) return 'PT';
+    const parts = name.split(' ').filter(Boolean);
+    if (parts.length > 1) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+  };
+  
+  const initials = getInitials(currentName);
+
+  const handleNameEndEditing = async (e: any) => {
+    const newName = e.nativeEvent.text.trim();
+    if (newName && newName !== currentName) {
+      if (recordsProfileId && recordsProfileId !== 'all') {
+        await updatePatientName(recordsProfileId, currentName, newName);
+      } else {
+        await updatePatientName('1', currentName, newName);
+      }
+      setCurrentName(newName);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: KLINO_COLORS.papel }}>
@@ -21,7 +58,7 @@ export default function PatientTimelineScreen() {
       {/* HEADER */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 40 : 16, paddingBottom: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginRight: 16 }}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/records')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginRight: 16 }}>
             <ArrowLeft size={24} color={KLINO_COLORS.tinta} strokeWidth={1.75} />
           </TouchableOpacity>
           <KlinoText variant="h3" style={{ fontSize: 18 }}>Expediente</KlinoText>
@@ -34,11 +71,21 @@ export default function PatientTimelineScreen() {
       {/* PATIENT INFO */}
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingBottom: 24 }}>
         <View style={{ width: 64, height: 64, backgroundColor: KLINO_COLORS.verde, justifyContent: 'center', alignItems: 'center', marginRight: 16 }}>
-          <KlinoText variant="h2" color={KLINO_COLORS.papel}>RC</KlinoText>
+          <KlinoText variant="h2" color={KLINO_COLORS.papel}>{initials}</KlinoText>
         </View>
         <View style={{ flex: 1 }}>
-          <KlinoText variant="h2" style={{ marginBottom: 4 }}>Ramiro Cepeda</KlinoText>
-          <KlinoText variant="small" color={KLINO_COLORS.gris}>58 años · M · Exp. KL-0192 · Consultorio</KlinoText>
+          <TextInput 
+            defaultValue={currentName}
+            onEndEditing={handleNameEndEditing}
+            style={{
+              fontFamily: 'serif', // matching variant="h2" typically
+              fontSize: 24,
+              color: KLINO_COLORS.tinta,
+              marginBottom: 4,
+              padding: 0
+            }}
+          />
+          <KlinoText variant="small" color={KLINO_COLORS.gris}>Exp. KL-{patientNotes[0]?.id?.substring(0,4) || '0000'} · Consultorio</KlinoText>
         </View>
       </View>
 
@@ -71,164 +118,156 @@ export default function PatientTimelineScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-        {activeTab === 'Resumen' && <ResumenTab router={router} />}
-        {activeTab === 'Historia clínica' && <HistoriaClinicaTab />}
-        {activeTab === 'Notas de evolución' && <NotasEvolucionTab />}
+        {activeTab === 'Resumen' && <ResumenTab router={router} notes={patientNotes} patientName={currentName} />}
+        {activeTab === 'Historia clínica' && <HistoriaClinicaTab notes={patientNotes} />}
+        {activeTab === 'Notas de evolución' && <NotasEvolucionTab notes={patientNotes} router={router} patientName={currentName} />}
         {activeTab === 'Labs e imagen' && <LabsImagenTab />}
         {activeTab === 'Indicaciones' && <IndicacionesTab />}
         {activeTab === 'Referencia' && <ReferenciaTab />}
-        {activeTab === 'Recetas' && <RecetasTab />}
+        {activeTab === 'Recetas' && <RecetasTab notes={patientNotes} router={router} patientName={currentName} />}
       </ScrollView>
 
     </SafeAreaView>
   );
 }
 
-const ResumenTab = ({ router }: any) => (
-  <View style={{ padding: 24 }}>
-    
-    {/* ALERGIAS */}
-    <View style={{ borderWidth: 1, borderColor: '#C53030', padding: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
-      <AlertTriangle size={24} color="#C53030" strokeWidth={1.5} style={{ marginRight: 16 }} />
-      <View>
-        <KlinoText variant="label" color="#C53030" style={{ letterSpacing: 1, marginBottom: 4 }}>ALERGIAS</KlinoText>
-        <KlinoText variant="body" style={{ fontSize: 18 }}>Penicilina · reacción cutánea</KlinoText>
+const ResumenTab = ({ router, notes, patientName }: any) => {
+  const latestNote = notes && notes.length > 0 ? notes[0] : null;
+  const vitals = latestNote?.vitals || {};
+
+  return (
+    <View style={{ padding: 24 }}>
+      {/* SIGNOS VITALES GRID */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', borderWidth: 1, borderColor: KLINO_COLORS.borderStrong, marginBottom: 32 }}>
+        <GridCell label="PRESIÓN" value={vitals.ta || '--/--'} sub="última consulta" isRight />
+        <GridCell label="FREC. CARDÍACA" value={vitals.fc || '--'} sub="lpm" isBottom />
+        <GridCell label="PESO / IMC" value={vitals.peso || '--'} sub={vitals.imc ? `IMC ${vitals.imc}` : 'kg'} isRight isBottom />
+        <GridCell label="TEMP." value={vitals.temp || '--'} sub="°C" isBottom />
       </View>
-    </View>
 
-    {/* SIGNOS VITALES GRID */}
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', borderWidth: 1, borderColor: KLINO_COLORS.borderStrong, marginBottom: 32 }}>
-      <GridCell label="PRESIÓN" value="128/82" sub="hoy · estable" isRight />
-      <GridCell label="GLUCOSA" value="112" sub="mg/dL · 2 jul" isBottom />
-      <GridCell label="PESO / IMC" value="81.4" sub="kg · IMC 27.1" isRight isBottom />
-      <GridCell label="HBA1C" value="6.9%" sub="18 abr · pendiente" isBottom />
-    </View>
+      {/* DIAGNÓSTICOS ACTIVOS */}
+      <SectionTitle title="DIAGNÓSTICOS Y NOTAS" />
+      <View style={{ borderBottomWidth: 1, borderColor: KLINO_COLORS.borderHairline, marginBottom: 32 }}>
+        {notes?.slice(0,3).map((n: any, idx: number) => (
+          <TouchableOpacity key={n.id || idx} onPress={() => router.push(`/note-review?id=${n.id}&profileId=${n.profileId || '1'}`)}>
+            <ListItem 
+              left={n.specialty || 'Consulta General'} 
+              right={new Date(Number(n.time)).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })} 
+            />
+          </TouchableOpacity>
+        ))}
+        {(!notes || notes.length === 0) && (
+          <KlinoText variant="small" color={KLINO_COLORS.gris} style={{ paddingVertical: 16 }}>No hay consultas previas.</KlinoText>
+        )}
+      </View>
 
-    {/* DIAGNÓSTICOS ACTIVOS */}
-    <SectionTitle title="DIAGNÓSTICOS ACTIVOS" />
-    <View style={{ borderBottomWidth: 1, borderColor: KLINO_COLORS.borderHairline, marginBottom: 32 }}>
-      <ListItem left="Hipertensión esencial" right="desde 2019" />
-      <ListItem left="Diabetes mellitus tipo 2" right="desde 2021" />
-    </View>
-
-    {/* TRATAMIENTO ACTUAL */}
-    <SectionTitle title="TRATAMIENTO ACTUAL" />
-    <View style={{ marginBottom: 32 }}>
-      <BoxItem title="Losartán 50 mg" subtitle="cada 24 h · desde 2 jul" />
-      <BoxItem title="Metformina 850 mg" subtitle="con la comida · desde 2 jul" />
-    </View>
-
-    {/* ÚLTIMOS MOVIMIENTOS */}
-    <SectionTitle title="ÚLTIMOS MOVIMIENTOS" />
-    <View style={{ borderBottomWidth: 1, borderColor: KLINO_COLORS.borderHairline, marginBottom: 32 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, borderTopWidth: 1, borderColor: KLINO_COLORS.borderHairline }}>
-        <View>
-          <KlinoText variant="body" style={{ fontSize: 18, marginBottom: 4 }}>Historia clínica · hoy</KlinoText>
-          <KlinoText variant="small" color={KLINO_COLORS.gris}>Dictada 16:30</KlinoText>
-        </View>
-        <TouchableOpacity style={{ backgroundColor: KLINO_COLORS.ambar, paddingHorizontal: 16, paddingVertical: 8 }}>
-          <KlinoText variant="label" color={KLINO_COLORS.tinta} style={{ fontWeight: 'bold' }}>SIN APROBAR</KlinoText>
+      {/* BOTONES INFERIORES */}
+      <View style={{ flexDirection: 'row', gap: 16 }}>
+        <TouchableOpacity 
+          onPress={() => router.push(`/live-consultation?patientName=${encodeURIComponent(patientName)}`)}
+          style={{ flex: 1, backgroundColor: KLINO_COLORS.verde, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+        >
+          <Mic size={20} color={KLINO_COLORS.papel} strokeWidth={2} />
+          <KlinoText variant="label" color={KLINO_COLORS.papel} style={{ fontWeight: 'bold', letterSpacing: 1 }}>DICTAR</KlinoText>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          onPress={() => router.push('/scanner-select')}
+          style={{ flex: 1, borderWidth: 1, borderColor: KLINO_COLORS.borderStrong, paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <KlinoText variant="label" color={KLINO_COLORS.tinta} style={{ fontWeight: 'bold', letterSpacing: 1 }}>ESCANEAR</KlinoText>
         </TouchableOpacity>
       </View>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, borderTopWidth: 1, borderColor: KLINO_COLORS.borderHairline }}>
-        <View>
-          <KlinoText variant="body" style={{ fontSize: 18, marginBottom: 4 }}>Laboratorios · 18 abr</KlinoText>
-          <KlinoText variant="small" color={KLINO_COLORS.gris}>Química sanguínea</KlinoText>
-        </View>
-        <ChevronDown size={20} color={KLINO_COLORS.gris} />
+    </View>
+  );
+};
+
+const HistoriaClinicaTab = ({ notes }: any) => {
+  const latestNote = notes[0];
+  const dateStr = latestNote?.time ? new Date(Number(latestNote.time)).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase() : 'SIN FECHA';
+  
+  const { updateNoteContent, recordsProfileId } = useProfile();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedText, setEditedText] = useState('');
+
+  useEffect(() => {
+    if (latestNote) {
+      setEditedText(latestNote.transcription || latestNote.rawTranscription || '');
+    }
+  }, [latestNote]);
+
+  const toggleEdit = () => {
+    if (isEditing && latestNote) {
+      // Save changes
+      updateNoteContent(recordsProfileId || '1', latestNote.id, editedText);
+    }
+    setIsEditing(!isEditing);
+  };
+
+  return (
+    <View style={{ paddingBottom: 40 }}>
+      {/* AVISO EDICION BLOQUEADA */}
+      <View style={{ backgroundColor: isEditing ? KLINO_COLORS.ambar + '20' : KLINO_COLORS.papelHondo, padding: 24, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
+        <Lock size={20} color={isEditing ? KLINO_COLORS.ambar : KLINO_COLORS.gris} style={{ marginRight: 16 }} />
+        <KlinoText variant="small" color={isEditing ? KLINO_COLORS.tinta : KLINO_COLORS.gris} style={{ flex: 1, lineHeight: 20 }}>
+          {isEditing ? 'Edición desbloqueada. Modifica el texto y vuelve a tocar el lápiz para guardar.' : 'Edición bloqueada. Toca el lápiz para desbloquear con tu huella.'}
+        </KlinoText>
+        <TouchableOpacity onPress={toggleEdit} style={{ borderWidth: 1, borderColor: KLINO_COLORS.borderStrong, padding: 12, backgroundColor: isEditing ? KLINO_COLORS.ambar : KLINO_COLORS.papel }}>
+          <Pencil size={20} color={isEditing ? KLINO_COLORS.tinta : KLINO_COLORS.verde} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={{ padding: 24 }}>
+        <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2, marginBottom: 24 }}>HISTORIA CLÍNICA · {dateStr}</KlinoText>
+
+        {!latestNote ? (
+          <KlinoText variant="body" color={KLINO_COLORS.gris}>No hay notas clínicas disponibles para este paciente.</KlinoText>
+        ) : isEditing ? (
+          <TextInput
+            multiline
+            value={editedText}
+            onChangeText={setEditedText}
+            style={{ fontSize: 17, lineHeight: 28, fontFamily: 'serif', color: KLINO_COLORS.tinta, minHeight: 300, textAlignVertical: 'top' }}
+          />
+        ) : (
+          <KlinoText variant="body" style={{ fontSize: 17, lineHeight: 28, fontFamily: 'serif' }}>
+            {latestNote.transcription || latestNote.rawTranscription || 'Nota vacía.'}
+          </KlinoText>
+        )}
+
+        {latestNote && (
+          <KlinoText variant="small" color={KLINO_COLORS.gris} style={{ marginTop: 24, lineHeight: 22 }}>
+            Generada el {dateStr}. Estado: {latestNote.statusText || 'Pendiente'}.
+          </KlinoText>
+        )}
+
       </View>
     </View>
+  );
+};
 
-    {/* BOTONES INFERIORES */}
-    <View style={{ flexDirection: 'row', gap: 16 }}>
-      <TouchableOpacity 
-        onPress={() => router.push('/live-consultation')}
-        style={{ flex: 1, backgroundColor: KLINO_COLORS.verde, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-      >
-        <Mic size={20} color={KLINO_COLORS.papel} strokeWidth={2} />
-        <KlinoText variant="label" color={KLINO_COLORS.papel} style={{ fontWeight: 'bold', letterSpacing: 1 }}>DICTAR</KlinoText>
-      </TouchableOpacity>
-      
-      <TouchableOpacity 
-        onPress={() => router.push('/scanner-select')}
-        style={{ flex: 1, borderWidth: 1, borderColor: KLINO_COLORS.borderStrong, paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }}
-      >
-        <KlinoText variant="label" color={KLINO_COLORS.tinta} style={{ fontWeight: 'bold', letterSpacing: 1 }}>ESCANEAR</KlinoText>
-      </TouchableOpacity>
-    </View>
-  </View>
-);
-
-const HistoriaClinicaTab = () => (
-  <View style={{ paddingBottom: 40 }}>
-    
-    {/* AVISO EDICION BLOQUEADA */}
-    <View style={{ backgroundColor: KLINO_COLORS.papelHondo, padding: 24, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
-      <Lock size={20} color={KLINO_COLORS.gris} style={{ marginRight: 16 }} />
-      <KlinoText variant="small" color={KLINO_COLORS.gris} style={{ flex: 1, lineHeight: 20 }}>
-        Edición bloqueada. Toca el lápiz para desbloquear con tu huella.
-      </KlinoText>
-      <TouchableOpacity style={{ borderWidth: 1, borderColor: KLINO_COLORS.borderStrong, padding: 12, backgroundColor: KLINO_COLORS.papel }}>
-        <Pencil size={20} color={KLINO_COLORS.verde} />
-      </TouchableOpacity>
-    </View>
-
-    <View style={{ padding: 24 }}>
-      <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2, marginBottom: 24 }}>HISTORIA CLÍNICA · 14 AGO 2026</KlinoText>
-
-      <TextSection title="FICHA DE IDENTIFICACIÓN">
-        Ramiro Cepeda Villalobos · 58 años · masculino · 12 mar 1968 · Monterrey, NL · casado · empleado administrativo
-      </TextSection>
-
-      <TextSection title="ANTECEDENTES HEREDOFAMILIARES">
-        Padre con hipertensión y cardiopatía isquémica. Madre con diabetes tipo 2. Hermana con hipotiroidismo.
-      </TextSection>
-
-      <TextSection title="ANTECEDENTES PERSONALES NO PATOLÓGICOS">
-        Alimentación irregular, alta en sodio. Sedentario. Tabaquismo suspendido hace 9 años. Alcohol ocasional.
-      </TextSection>
-
-      <TextSection title="ANTECEDENTES PERSONALES PATOLÓGICOS">
-        Hipertensión esencial diagnosticada en 2019. Diabetes mellitus tipo 2 en 2021. Alergia a penicilina. Apendicectomía en 1994.
-      </TextSection>
-
-      <TextSection title="PADECIMIENTO ACTUAL">
-        Acude a seguimiento. Refiere buena tolerancia al ajuste de dosis realizado el 2 de julio. Niega mareos, cefalea, edema o alteraciones visuales.
-      </TextSection>
-
-      <TextSection title="INTERROGATORIO POR APARATOS Y SISTEMAS">
-        Cardiovascular sin dolor precordial ni disnea. Respiratorio sin tos. Digestivo sin cambios. Urinario con nicturia ocasional. Neurológico sin déficit.
-      </TextSection>
-
-      <TextSection title="EXPLORACIÓN FÍSICA">
-        TA 128/82 · FC 74 · FR 16 · temperatura 36.5 · peso 81.4 kg · talla 1.73 m · IMC 27.1. Cardiopulmonar sin agregados. Abdomen blando. Sin edema en miembros inferiores.
-      </TextSection>
-
-      <TextSection title="DIAGNÓSTICOS">
-        Hipertensión esencial en control. Diabetes mellitus tipo 2 con adherencia adecuada.
-      </TextSection>
-
-      <TextSection title="PLAN Y PRONÓSTICO">
-        Continuar losartán 50 mg cada 24 h y metformina 850 mg con la comida. Control en 30 días con bitácora de presión. Solicitar HbA1c. Pronóstico bueno para la función.
-      </TextSection>
-
-      <KlinoText variant="small" color={KLINO_COLORS.gris} style={{ marginTop: 24, lineHeight: 22 }}>
-        Aprobada el 14 de agosto a las 16:52 por Dra. Andrea Solís, ced. 7841203. Para corregirla necesitas desbloquear la edición.
-      </KlinoText>
-
-    </View>
-  </View>
-);
-
-const NotasEvolucionTab = () => (
+const NotasEvolucionTab = ({ notes, router, patientName }: any) => (
   <View>
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
-      <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>6 NOTAS DE EVOLUCIÓN</KlinoText>
-      <KlinoText variant="label" color={KLINO_COLORS.verde} style={{ fontWeight: 'bold', letterSpacing: 1 }}>DICTAR</KlinoText>
+      <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>{notes?.length || 0} NOTAS DE EVOLUCIÓN</KlinoText>
+      <TouchableOpacity onPress={() => router.push(`/live-consultation?patientName=${encodeURIComponent(patientName)}`)}>
+        <KlinoText variant="label" color={KLINO_COLORS.verde} style={{ fontWeight: 'bold', letterSpacing: 1 }}>DICTAR</KlinoText>
+      </TouchableOpacity>
     </View>
-    <RecordItem date="14 de agosto" status="SIN APROBAR" desc="Tolera el ajuste de dosis. TA 128/82, sin edema." />
-    <RecordItem date="2 de julio" status="OK" desc="Se inicia losartán 50 mg. Promedio en casa 128/82." />
-    <RecordItem date="18 de abril" status="OK" desc="Revisión de laboratorios. HbA1c 6.9%." />
+    {notes?.map((n: any) => (
+      <TouchableOpacity key={n.id} onPress={() => router.push(`/note-review?id=${n.id}&profileId=${n.profileId || '1'}`)}>
+        <RecordItem 
+          date={new Date(Number(n.time)).toLocaleDateString('es-MX', { day: '2-digit', month: 'long' })}
+          status={n.status === 'pending' ? 'SIN APROBAR' : 'OK'}
+          desc={n.specialty || 'Evolución general'}
+        />
+      </TouchableOpacity>
+    ))}
+    {(!notes || notes.length === 0) && (
+      <View style={{ padding: 24 }}>
+        <KlinoText variant="body" color={KLINO_COLORS.gris}>No hay notas de evolución.</KlinoText>
+      </View>
+    )}
   </View>
 );
 
@@ -297,16 +336,41 @@ const ReferenciaTab = () => (
   </View>
 );
 
-const RecetasTab = () => (
-  <View>
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
-      <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>RECETAS</KlinoText>
-      <KlinoText variant="label" color={KLINO_COLORS.verde} style={{ fontWeight: 'bold', letterSpacing: 1 }}>DICTAR</KlinoText>
+const RecetasTab = ({ notes, router, patientName }: any) => {
+  // Extract "PLAN" sections from notes
+  const recetas = notes?.filter((n: any) => n.transcription && n.transcription.toUpperCase().includes('PLAN:'))
+    .map((n: any) => {
+      const parts = n.transcription.split(/PLAN:|plan:/i);
+      const planText = parts.length > 1 ? parts[1].trim() : '';
+      return {
+        id: n.id,
+        time: n.time,
+        profileId: n.profileId,
+        desc: planText.substring(0, 80) + (planText.length > 80 ? '...' : '')
+      };
+    }) || [];
+
+  return (
+    <View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
+        <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>RECETAS</KlinoText>
+        <TouchableOpacity onPress={() => router.push(`/live-consultation?patientName=${encodeURIComponent(patientName)}`)}>
+          <KlinoText variant="label" color={KLINO_COLORS.verde} style={{ fontWeight: 'bold', letterSpacing: 1 }}>DICTAR</KlinoText>
+        </TouchableOpacity>
+      </View>
+      {recetas.map((r: any) => (
+        <TouchableOpacity key={r.id} onPress={() => router.push(`/note-review?id=${r.id}&profileId=${r.profileId || '1'}`)}>
+          <RecordItem date={new Date(Number(r.time)).toLocaleDateString('es-MX', { day: '2-digit', month: 'long' })} status="OK" desc={r.desc} />
+        </TouchableOpacity>
+      ))}
+      {recetas.length === 0 && (
+        <View style={{ padding: 24 }}>
+          <KlinoText variant="body" color={KLINO_COLORS.gris}>No hay recetas ni planes indicados.</KlinoText>
+        </View>
+      )}
     </View>
-    <RecordItem date="14 de agosto" status="OK" desc="Losartán 50 mg · Metformina 850 mg · 30 días" />
-    <RecordItem date="2 de julio" status="OK" desc="Losartán 50 mg · 30 días" />
-  </View>
-);
+  );
+};
 
 const RecordItem = ({ date, status, desc }: any) => (
   <View style={{ padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, TouchableOpacity, SafeAreaView, Platform, TextInput } from 'react-native';
+import { View, ScrollView, TouchableOpacity, SafeAreaView, Platform, TextInput, Alert } from 'react-native';
 import { Search, ScanLine, FileText, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { KLINO_COLORS } from '../../src/constants/theme';
@@ -9,7 +9,7 @@ import { FadingScrollContainer } from '../../src/components/common/FadingScrollC
 
 export default function RecordsScreen() {
   const router = useRouter();
-  const { notes, intelligenceModes, recordsProfileId, setRecordsProfileId } = useProfile();
+  const { notes, intelligenceModes, recordsProfileId, setRecordsProfileId, deleteMultipleNotes } = useProfile();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Asegurarnos de que el ID por defecto sea el primer modo o 'all'
@@ -47,6 +47,28 @@ export default function RecordsScreen() {
 
   const getDocsCount = (patientName: string) => {
     return sortedNotes.filter(n => n.name === patientName).length;
+  };
+
+  const handleDeletePatient = (patientName: string) => {
+    Alert.alert(
+      "Eliminar expediente",
+      `¿Estás seguro de que deseas eliminar todo el expediente de ${patientName}? Esta acción borrará todas sus notas y no se puede deshacer.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Eliminar", 
+          style: "destructive",
+          onPress: () => {
+             Object.keys(notes).forEach(profileId => {
+               const patientNoteIds = notes[profileId].filter(n => n.name === patientName).map(n => n.id);
+               if (patientNoteIds.length > 0) {
+                 deleteMultipleNotes(profileId, patientNoteIds);
+               }
+             });
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -126,7 +148,8 @@ export default function RecordsScreen() {
             <TouchableOpacity 
               key={p.id}
               activeOpacity={0.7}
-              onPress={() => router.push('/patient-timeline')}
+              onPress={() => router.push({ pathname: '/patient-timeline', params: { patientName: p.name } })}
+              onLongPress={() => handleDeletePatient(p.name)}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',

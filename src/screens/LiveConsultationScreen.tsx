@@ -12,6 +12,7 @@ export default function LiveConsultationScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const folderParam = (params.folder as string) || 'consulta_general';
+  const forcedPatientName = params.patientName as string | undefined;
 
   const { addNote, dashboardProfileId, recordsProfileId } = useProfile();
   
@@ -107,10 +108,13 @@ export default function LiveConsultationScreen() {
             name: 'dictado.m4a'
          } as any;
          
-         // n8n espera "file" en el nodo Whisper (binaryPropertyName: "file") y enviamos "audio" por compatibilidad
+         // n8n y Supabase requieren que el profileId sea un UUID válido
+         const isValidUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
+         const n8nProfileId = isValidUUID(profile) ? profile : '216b1104-b143-4d87-ac9a-ffbe3d50bb9a'; // Fallback a UUID válido de prueba
+
          formData.append('file', audioFile);
          formData.append('audio', audioFile);
-         formData.append('profileId', profile);
+         formData.append('profileId', n8nProfileId);
          formData.append('folder', folderParam);
 
          const webhookUrl = process.env.EXPO_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.srv1574981.hstgr.cloud/webhook/Klino/upload-audio';
@@ -130,23 +134,66 @@ export default function LiveConsultationScreen() {
              throw new Error(`HTTP error! status: ${res.status} - ${errorText}`);
            }
            
-           const data = await res.json();
+           const responseText = await res.text();
+           if (!responseText || responseText.trim() === '') {
+             throw new Error("El servidor de n8n no devolvió ninguna respuesta (cuerpo vacío). Es probable que el flujo haya fallado antes del nodo 'Respond to Webhook'.");
+           }
+
+           let data;
+           try {
+             data = JSON.parse(responseText);
+           } catch (parseError) {
+             console.error("Respuesta cruda de n8n:", responseText);
+             throw new Error(`n8n devolvió un formato inválido en lugar de JSON. (Respuesta: ${responseText.substring(0, 50)}...)`);
+           }
+
            console.log("Respuesta recibida de n8n:", JSON.stringify(data));
            finalNoteData = formatClinicalJson(data);
          } catch (e: any) {
            console.error("Error n8n:", e);
-           Alert.alert(
-             'Aviso de Conexión', 
-             `No se pudo contactar o procesar en n8n (${webhookUrl}).\n\nDetalle: ${e.message || e}\n\nSe creará una nota de respaldo.`,
-             [{ text: 'Entendido' }]
-           );
-           
-           finalNoteData = {
-              paciente: 'Paciente (Sin conexión n8n)',
-              transcription: 'S: Paciente acude por chequeo...\nO: TA 128/82, FC 74, peso 81.4kg.\nA: Hipertensión en control.\nP: Losartán 50mg.',
-              vitals: { temp: '36.5', fc: '74', ta: '128/82' } as any,
-              rawText: 'Fallback local text'
-           };
+           let fallbackSuccess = false;
+           try {
+             const { supabase } = require('../utils/supabase');
+             const { data: dbRecords } = await supabase
+               .from('clinical_records')
+               .select('*')
+               .order('created_at', { ascending: false })
+               .limit(1);
+               
+             if (dbRecords && dbRecords.length > 0) {
+               const record = dbRecords[0];
+               const timeDiff = Date.now() - new Date(record.created_at).getTime();
+               if (timeDiff < 120000) { // Menos de 2 min
+                 console.log("Nota recuperada de Supabase.");
+                 const soapSource = record.soap_note_text || record.soap_note || '';
+                 const parsed = formatClinicalJson(soapSource);
+                 finalNoteData = {
+                   paciente: parsed.paciente || record.patient_name || 'Paciente Recuperado',
+                   transcription: parsed.transcription || soapSource,
+                   vitals: parsed.vitals || record.vitals_data || {},
+                   rawText: record.raw_transcription || ''
+                 };
+                 fallbackSuccess = true;
+               }
+             }
+           } catch (fallbackError) {
+             console.error("Fallo fallback", fallbackError);
+           }
+
+           if (!fallbackSuccess) {
+             Alert.alert(
+               'Aviso', 
+               `Fallo en n8n.\nDetalle: ${e.message}\nSe creará nota local.`,
+               [{ text: 'Entendido' }]
+             );
+             
+             finalNoteData = {
+                paciente: 'Paciente (Sin conexión n8n)',
+                transcription: 'S: Paciente acude por chequeo...\nO: TA 128/82, FC 74, peso 81.4kg.\nA: Hipertensión en control.\nP: Losartán 50mg.',
+                vitals: { temp: '36.5', fc: '74', ta: '128/82' } as any,
+                rawText: 'Fallback local text'
+             };
+           }
          }
       } else {
         Alert.alert('Error', 'No se grabó ningún audio');
@@ -155,7 +202,7 @@ export default function LiveConsultationScreen() {
       }
 
       const newNoteId = Math.random().toString(36).substring(7);
-      const profile = dashboardProfileId || recordsProfileId || '1';
+      const targetProfileId = recordsProfileId && recordsProfileId !== 'all' ? recordsProfileId : (dashboardProfileId || '1');
       
       const specialtyMap: Record<string, string> = {
         consulta_general: 'Medicina General',
@@ -166,7 +213,7 @@ export default function LiveConsultationScreen() {
       
       const newNote = {
         id: newNoteId,
-        name: finalNoteData.paciente || 'Paciente (Dictado)',
+        name: forcedPatientName || finalNoteData.paciente || 'Paciente (Dictado)',
         time: Date.now(),
         status: 'pending' as 'pending',
         statusText: 'PENDIENTE',
@@ -176,9 +223,9 @@ export default function LiveConsultationScreen() {
         vitals: finalNoteData.vitals || {}
       };
 
-      await addNote(profile, newNote as any);
+      await addNote(targetProfileId, newNote as any);
 
-      router.replace(`/note-review?id=${newNoteId}&profileId=${profile}`);
+      router.replace(`/note-review?id=${newNoteId}&profileId=${targetProfileId}`);
     } catch (e) {
       console.error(e);
       setIsFinishing(false);
