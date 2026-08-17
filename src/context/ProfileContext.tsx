@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { supabase } from '../utils/supabase';
+import { formatClinicalJson } from '../utils/formatClinicalJson';
 
 type ProfileType = 'General' | 'Especialista';
 
@@ -13,6 +14,10 @@ interface AppSettings {
   };
   security: {
     biometrics: boolean;
+  };
+  appearance: {
+    glassmorphism: boolean;
+    dictationButtonOrientation?: 'vertical' | 'horizontal';
   };
 }
 
@@ -71,7 +76,100 @@ export interface IntelligenceMode {
   formatName: string;
   color: string;
   isActive: boolean;
+  webhookFolderKey?: string;
+  promptPresetId?: string;
+  customPrompt?: string;
+  sections?: string[];
+  templateImageUri?: string;
 }
+
+export interface PresetFormat {
+  id: string;
+  name: string;
+  description: string;
+  sections: string[];
+  promptPresetId: string;
+  customPrompt: string;
+  webhookFolderKey: string;
+}
+
+export const PRESET_FORMATS: PresetFormat[] = [
+  {
+    id: 'hp_completa',
+    name: 'Consulta General (H&P)',
+    description: 'Estructura médica completa: Antecedentes, Padecimiento Actual, Exploración Física, Impresión Diagnóstica y Plan.',
+    sections: ['ANTECEDENTES HEREDOFAMILIARES', 'ANTECEDENTES PERSONALES NO PATOLÓGICOS', 'ANTECEDENTES PERSONALES PATOLÓGICOS', 'PADECIMIENTO ACTUAL', 'EXPLORACIÓN FÍSICA', 'IMPRESIÓN DIAGNÓSTICA', 'PLAN'],
+    promptPresetId: 'hp_completa',
+    customPrompt: '',
+    webhookFolderKey: 'consulta_general'
+  },
+  {
+    id: 'nota_rapida',
+    name: 'Nota Rápida',
+    description: 'Nota continua y fluida sin subdivisiones ni formato estricto, ideal para seguimiento rápido.',
+    sections: ['NOTA CLÍNICA'],
+    promptPresetId: 'nota_rapida',
+    customPrompt: '',
+    webhookFolderKey: 'nota_rapida'
+  },
+  {
+    id: 'pediatria_std',
+    name: 'Pediatría',
+    description: 'Enfoque en desarrollo infantil, antecedentes de vacunación y somatometría (peso/talla).',
+    sections: ['ANTECEDENTES PERINATALES', 'SOMATOMETRÍA', 'PADECIMIENTO ACTUAL', 'EXPLORACIÓN FÍSICA', 'IMPRESIÓN DIAGNÓSTICA', 'PLAN'],
+    promptPresetId: 'pediatria',
+    customPrompt: '',
+    webhookFolderKey: 'modo_pediatria'
+  },
+  {
+    id: 'psicologia_std',
+    name: 'Psicología',
+    description: 'Análisis psicológico detallado incluyendo examen mental, afecto, discurso y plan terapéutico.',
+    sections: ['MOTIVO DE CONSULTA', 'EXAMEN MENTAL', 'HISTORIA PERSONAL', 'IMPRESIÓN DIAGNÓSTICA', 'PLAN TERAPÉUTICO'],
+    promptPresetId: 'psicologia',
+    customPrompt: '',
+    webhookFolderKey: 'modo_psicologia'
+  }
+];
+
+const INITIAL_MODES: IntelligenceMode[] = [
+  { 
+    id: '1', 
+    name: 'Consulta General', 
+    formatId: 'hp_completa', 
+    formatName: 'Historia Clínica H&P', 
+    color: '#1B4F9B', 
+    isActive: true,
+    webhookFolderKey: 'consulta_general',
+    promptPresetId: 'hp_completa',
+    customPrompt: 'Estructura médica H&P detallada organizando antecedentes heredofamiliares, patológicos, no patológicos, padecimiento actual, exploración física, impresión diagnóstica y plan.',
+    sections: ['ANTECEDENTES HEREDOFAMILIARES', 'ANTECEDENTES PERSONALES NO PATOLÓGICOS', 'ANTECEDENTES PERSONALES PATOLÓGICOS', 'PADECIMIENTO ACTUAL', 'EXPLORACIÓN FÍSICA', 'IMPRESIÓN DIAGNÓSTICA', 'PLAN']
+  },
+  { 
+    id: '2', 
+    name: 'Pediatría', 
+    formatId: 'pediatria_std', 
+    formatName: 'Expediente Pediátrico', 
+    color: '#E8820C', 
+    isActive: true,
+    webhookFolderKey: 'modo_pediatria',
+    promptPresetId: 'pediatria',
+    customPrompt: 'Enfoque en desarrollo infantil, antecedentes de vacunación, somatometría (peso/talla) y dosis exactas por kg de peso.',
+    sections: ['ANTECEDENTES PERINATALES', 'SOMATOMETRÍA', 'PADECIMIENTO ACTUAL', 'EXPLORACIÓN FÍSICA', 'IMPRESIÓN DIAGNÓSTICA', 'PLAN']
+  },
+  { 
+    id: '3', 
+    name: 'Psicología', 
+    formatId: 'psicologia_std', 
+    formatName: 'Nota Psicológica', 
+    color: '#8B5CF6', 
+    isActive: true,
+    webhookFolderKey: 'modo_psicologia',
+    promptPresetId: 'psicologia',
+    customPrompt: 'Análisis psicológico detallado incluyendo estado mental, evaluación cognitiva, diagnóstico DSM-5 y plan terapéutico.',
+    sections: ['MOTIVO DE CONSULTA', 'EXAMEN MENTAL', 'HISTORIA PERSONAL', 'IMPRESIÓN DIAGNÓSTICA DSM-5', 'PLAN TERAPÉUTICO']
+  },
+];
 
 interface ProfileContextType {
   profile: ProfileType;
@@ -100,11 +198,12 @@ interface ProfileContextType {
   confirmNote: (profileId: string, noteId: string, signature?: string[]) => Promise<void>;
   addNote: (profileId: string, note: ClinicalNote) => Promise<void>;
   deleteNote: (profileId: string, noteId: string) => Promise<void>;
+  deleteMultipleNotes: (profileId: string, noteIds: string[]) => Promise<void>;
   updateNoteContent: (profileId: string, noteId: string, content: string) => Promise<void>;
   syncWithCloud: () => Promise<void>;
   isSyncing: boolean;
   appSettings: AppSettings;
-  updateSettings: (category: keyof AppSettings, key: string, value: boolean) => void;
+  updateSettings: (category: keyof AppSettings, key: string, value: any) => void;
   notificationsList: AppNotification[];
   markNotificationRead: (id: string) => void;
   deleteNotification: (id: string) => void;
@@ -112,6 +211,8 @@ interface ProfileContextType {
   addNotification: (notification: Omit<AppNotification, 'id'>) => void;
   savedSignature: string[] | null;
   setSavedSignature: (sig: string[] | null) => void;
+  resetProfile: () => void;
+  logout: () => Promise<void>;
 }
 
 const STORAGE_KEY = '@Klino_USER_PROFILE';
@@ -152,14 +253,12 @@ const INITIAL_SETTINGS: AppSettings = {
   },
   security: {
     biometrics: true,
+  },
+  appearance: {
+    glassmorphism: false,
+    dictationButtonOrientation: 'vertical',
   }
 };
-
-const INITIAL_MODES: IntelligenceMode[] = [
-  { id: '1', name: 'Medicina General', formatId: 'soap_std', formatName: 'SOAP Estándar', color: '#1B4F9B', isActive: true },
-  { id: '2', name: 'Cirugía', formatId: 'pre_op', formatName: 'Protocolo Pre-Op', color: '#2A7D6F', isActive: true },
-  { id: '3', name: 'Pediatría', formatId: 'ped_hist', formatName: 'Historial Evolutivo', color: '#1E5FAD', isActive: true },
-];
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
 
@@ -189,10 +288,24 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       if (!user) return;
       setUserId(user.id);
 
-      const { data: profileData } = await supabase.from('doctors').select('full_name, specialty, clinic_name').eq('id', user.id).single();
+      const { data: profileData } = await supabase.from('doctors').select('full_name, specialty, clinic_name').eq('id', user.id).maybeSingle();
       if (profileData) {
         if (profileData.full_name) setDoctorNameState(profileData.full_name);
         if (profileData.clinic_name) setProfileImageState(profileData.clinic_name);
+      } else {
+        console.log("--- [DEBUG] Doctor no encontrado en 'doctors' durante syncWithCloud. Creando registro...");
+        const userEmail = user.email || 'doctor@klino.med';
+        const defaultName = userEmail.split('@')[0] || 'Dr. Klino';
+        await supabase.from('doctors').upsert({
+          id: user.id,
+          full_name: defaultName,
+          email: userEmail,
+          whatsapp_number: `pending_${user.id.substring(0, 8)}`,
+          pin_hash: '0000',
+          specialty: 'Medicina General',
+          subscription_tier: 'trial',
+          subscription_status: 'active'
+        }, { onConflict: 'id' });
       }
 
       const { data: dbRecords, error } = await supabase
@@ -205,20 +318,49 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
         setNotes(prev => {
           const syncedNotes = { ...prev };
           dbRecords.forEach(record => {
+            // Formatear soap_note_text si es JSON crudo
+            let formattedTranscription = '';
+            let formattedVitals: any = undefined;
+            let formattedPatientName = record.patient_name || 'Paciente Sin Nombre';
+
+            const soapSource = record.soap_note_text || record.soap_note || '';
+            if (soapSource && typeof soapSource === 'string' && soapSource.trim()) {
+              const parsed = formatClinicalJson(soapSource);
+              formattedTranscription = parsed.transcription;
+              formattedVitals = parsed.vitals || record.vitals_data;
+              if (parsed.paciente && parsed.paciente !== 'Paciente Nuevo') {
+                formattedPatientName = parsed.paciente;
+              }
+            } else {
+              formattedTranscription = soapSource;
+              formattedVitals = record.vitals_data;
+            }
+
             const note: ClinicalNote = {
               id: record.id,
-              name: record.patient_name || 'Paciente Sin Nombre',
+              name: formattedPatientName,
               specialty: record.specialty || 'General',
               status: record.status as any,
               statusText: record.status === 'pending' ? 'PENDIENTE' : (record.status === 'completed' ? 'NOTA GENERADA' : 'REVISADO'),
               time: new Date(record.created_at).getTime(),
-              transcription: record.soap_note_text || '',
+              transcription: formattedTranscription,
               rawTranscription: record.raw_transcription || '',
               specialtyColor: record.specialty === 'Cirugía' ? '#2A7D6F' : (record.specialty === 'Pediatría' ? '#1E5FAD' : '#1B4F9B'),
               signature: record.signature_data,
-              vitals: record.vitals_data
+              vitals: formattedVitals
             };
-            const pId = record.folder_id || '1';
+            // Mapear folder_id correctamente: puede ser ID numérico ('1','2','3') o webhookFolderKey ('consulta_general','modo_pediatria')
+            let pId = record.folder_id || '1';
+            // Si el folder_id es un webhookFolderKey, mapearlo al ID numérico correcto
+            const folderKeyMap: Record<string, string> = {
+              'consulta_general': '1',
+              'modo_pediatria': '2',
+              'modo_psicologia': '3',
+              'nota_rapida': '1',
+            };
+            if (folderKeyMap[pId]) {
+              pId = folderKeyMap[pId];
+            }
             if (!syncedNotes[pId]) syncedNotes[pId] = [];
             const existingIdx = syncedNotes[pId].findIndex(n => n.id === note.id);
             if (existingIdx === -1) syncedNotes[pId] = [note, ...syncedNotes[pId]];
@@ -265,6 +407,25 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       }
     };
     loadPersistedData();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        console.log('--- [DEBUG Auth State] Usuario autenticado activo en Supabase:', session.user.id);
+        setUserId(session.user.id);
+        // Sincronizar notas de la nube al iniciar sesión (nuevo dispositivo o re-login)
+        if (_event === 'SIGNED_IN') {
+          console.log('--- [DEBUG Auth State] Evento SIGNED_IN detectado. Sincronizando notas...');
+          syncWithCloud();
+        }
+      } else {
+        console.log('--- [DEBUG Auth State] Sin sesión activa en Supabase');
+        setUserId(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -337,6 +498,14 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
     } catch (e) { console.error("Error borrando en Supabase", e); }
   };
 
+  const deleteMultipleNotes = async (profileId: string, noteIds: string[]) => {
+    const idsSet = new Set(noteIds);
+    setNotes(prev => ({ ...prev, [profileId]: (prev[profileId] || []).filter(n => !idsSet.has(n.id)) }));
+    try {
+      await supabase.from('clinical_records').delete().in('id', noteIds);
+    } catch (e) { console.error("Error borrando grupo de notas en Supabase", e); }
+  };
+
   const updateNoteContent = async (profileId: string, noteId: string, content: string) => {
     setNotes(prev => ({
       ...prev,
@@ -353,7 +522,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
   const toggleProfile = () => setProfile(prev => prev === 'General' ? 'Especialista' : 'General');
   const setDashboardProfileId = (id: string) => setDashboardProfileIdState(id);
   const setRecordsProfileId = (id: string) => setRecordsProfileIdState(id);
-  const updateSettings = (category: keyof AppSettings, key: string, value: boolean) => setAppSettings(prev => ({ ...prev, [category]: { ...prev[category], [key]: value } }));
+  const updateSettings = (category: keyof AppSettings, key: string, value: any) => setAppSettings(prev => ({ ...prev, [category]: { ...prev[category], [key]: value } }));
   const markNotificationRead = (id: string) => setNotificationsList(prev => prev.map(n => n.id === id ? { ...n, unread: false } : n));
   const deleteNotification = (id: string) => setNotificationsList(prev => prev.filter(n => n.id !== id));
   const clearAllNotifications = () => setNotificationsList([]);
@@ -362,6 +531,34 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
   const setDoctorAddress = async (address: string) => setDoctorAddressState(address);
   const setDoctorCedula = async (cedula: string) => setDoctorCedulaState(cedula);
   const setDoctorUniversity = async (uni: string) => setDoctorUniversityState(uni);
+
+  const resetProfile = () => {
+    setProfile('General');
+    setDoctorNameState('Dr. Snupi');
+    setDoctorCedulaState('12345678');
+    setDoctorUniversityState('Universidad Nacional Autónoma de México');
+    setDoctorAddressState('Av. Insurgentes Sur 123, CDMX');
+    setProfileImageState(null);
+    setDashboardProfileIdState('1');
+    setRecordsProfileIdState('1');
+    setUserId(null);
+    setIntelligenceModes(INITIAL_MODES);
+    setNotes(INITIAL_NOTES);
+    setAppSettings(INITIAL_SETTINGS);
+    setNotificationsList([]);
+    setSavedSignature(null);
+  };
+
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      resetProfile();
+      console.log('--- [DEBUG] Sesión cerrada y datos limpiados correctamente');
+    } catch (e) {
+      console.error('Error en logout:', e);
+    }
+  };
 
   const primaryColor = profile === 'General' ? '#1B4F9B' : '#2A7D6F';
 
@@ -373,9 +570,10 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       profileImage, setProfileImage, userId, dashboardProfileId, setDashboardProfileId,
       recordsProfileId, setRecordsProfileId, intelligenceModes, updateIntelligenceMode,
       deleteIntelligenceMode, addIntelligenceMode, notes, confirmNote, addNote,
-      deleteNote, updateNoteContent, syncWithCloud, isSyncing, appSettings,
+      deleteNote, deleteMultipleNotes, updateNoteContent, syncWithCloud, isSyncing, appSettings,
       updateSettings, notificationsList, markNotificationRead, deleteNotification,
-      clearAllNotifications, addNotification, savedSignature, setSavedSignature
+      clearAllNotifications, addNotification, savedSignature, setSavedSignature,
+      resetProfile, logout
     }}>
       {children}
     </ProfileContext.Provider>

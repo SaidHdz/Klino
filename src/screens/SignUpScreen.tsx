@@ -1,154 +1,194 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, SafeAreaView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
-import { Contact2, Lock, Eye, EyeOff, UserPlus, X } from 'lucide-react-native';
-import { MotiView } from 'moti';
+import { View, TouchableOpacity, SafeAreaView, Platform, Alert, Image, StatusBar } from 'react-native';
+import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../utils/supabase';
-
+import { KLINO_COLORS } from '../constants/theme';
+import { KlinoText } from '../components/common/KlinoText';
+import { KlinoButton } from '../components/common/KlinoButton';
 import Toast from 'react-native-toast-message';
 
-const SignUpScreen = () => {
+export default function SignUpScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [step, setStep] = useState(1);
+  const [selectedMode, setSelectedMode] = useState('Medicina general');
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSignUp = async () => {
-    if (!email || !password) {
-      return Alert.alert("Registro", "Ingresa un ID y contraseña para crear tu cuenta.");
+  const handleNext = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (step < 3) {
+      setStep(step + 1);
+    } else {
+      await handleFinish();
     }
-    
+  };
+
+  const handleSkip = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await handleFinish();
+  };
+
+  const handleFinish = async () => {
     setIsLoading(true);
     try {
-      const normalizedEmail = email.toLowerCase().trim();
-      const fullEmail = normalizedEmail.includes('@') ? normalizedEmail : `${normalizedEmail}@klino.med`;
+      // Mock signup since we removed the form for onboarding flow
+      const randomId = Math.random().toString(36).substring(7);
+      const fakeEmail = `nuevo_${randomId}@klino.med`;
       
       const { data, error } = await supabase.auth.signUp({
-        email: fullEmail,
-        password: password,
+        email: fakeEmail,
+        password: 'password123',
       });
 
       if (error) throw error;
 
-      // CREAR PERFIL EN TABLA 'doctors' (Sincronización con BD Clínica)
       if (data.user) {
-        const { error: profileError } = await supabase
-          .from('doctors')
-          .insert({
-            id: data.user.id,
-            full_name: email.split('.')[0] || 'Nuevo Médico', 
-            email: fullEmail,
-            whatsapp_number: `pending_${data.user.id.substring(0,8)}`, // Valor único temporal
-            pin_hash: '0000', // PIN por defecto inicial (requerido por DB)
-            specialty: 'Medicina General',
-            subscription_tier: 'trial',
-            subscription_status: 'active'
-          });
-
-        if (profileError) console.error("Error creando perfil:", profileError);
+        await supabase.from('doctors').insert({
+          id: data.user.id,
+          full_name: 'Dr. Nuevo', 
+          email: fakeEmail,
+          whatsapp_number: `pending_${data.user.id.substring(0,8)}`, 
+          pin_hash: '0000', 
+          specialty: selectedMode,
+          subscription_tier: 'trial',
+          subscription_status: 'active'
+        });
       }
       
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
-      Toast.show({
-        type: 'success',
-        text1: '¡Bienvenido a Klino!',
-        text2: 'Tu cuenta médica ha sido creada correctamente.',
-      });
-
-      // Si Supabase hace auto-login tras el registro, vamos a tabs
-      if (data.session) {
-        router.replace('/(tabs)');
-      } else {
-        Alert.alert("Verificación", "Revisa tu correo para confirmar tu cuenta.");
-        router.back();
-      }
+      router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert("Error de Registro", error.message);
+      // Si falla supabase, igual entramos en modo offline
+      router.replace('/(tabs)');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const modes = ['Medicina general', 'Pediatría', 'Ginecología', 'Urgencias'];
+
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        className="flex-1 px-8"
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
-        <View className="flex-1 py-12 justify-center">
-            
-          <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-start justify-center mb-8 absolute top-8 left-0 z-10">
-            <X size={24} color="#94A3B8" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: KLINO_COLORS.verde }}>
+      <StatusBar barStyle="light-content" />
+      <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 60 : 20, paddingBottom: 32 }}>
+        
+        {/* HEADER */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 64 }}>
+          <Image 
+            source={require('../../assets/klino-brand-kit/logo/symbol/symbol-papel.png')} 
+            style={{ width: 20, height: 20 }} 
+            resizeMode="contain"
+          />
+          <TouchableOpacity onPress={handleSkip}>
+            <KlinoText variant="label" color={KLINO_COLORS.papel}>SALTAR</KlinoText>
           </TouchableOpacity>
-
-          <MotiView 
-            from={{ opacity: 0, translateY: -20 }} 
-            animate={{ opacity: 1, translateY: 0 }} 
-            transition={{ type: 'spring', delay: 100 }}
-            className="items-center mb-10 mt-12"
-          >
-            <Text className="text-4xl font-black text-slate-900 tracking-tight mb-2 text-center">Registro Médico</Text>
-          </MotiView>
-
-          <MotiView 
-            from={{ opacity: 0, translateY: 20 }} 
-            animate={{ opacity: 1, translateY: 0 }} 
-            transition={{ type: 'spring', delay: 200 }}
-            className="mt-2"
-          >
-            <View className="mb-5">
-              <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-2">ID Médico Deseado</Text>
-              <View className="flex-row items-center bg-white border border-slate-200/60 rounded-2xl px-5 py-1.5 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
-                <Contact2 size={18} color="#94A3B8" />
-                <TextInput 
-                  placeholder="ej: dr.smith"
-                  placeholderTextColor="#CBD5E1"
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  className="flex-1 p-4 text-slate-800 font-semibold"
-                />
-              </View>
-            </View>
-
-            <View className="mb-8">
-              <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-2">Contraseña Segura</Text>
-              <View className="flex-row items-center bg-white border border-slate-200/60 rounded-2xl px-5 py-1.5 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
-                <Lock size={18} color="#94A3B8" />
-                <TextInput 
-                  placeholder="••••••••"
-                  placeholderTextColor="#CBD5E1"
-                  secureTextEntry={!showPassword}
-                  value={password}
-                  onChangeText={setPassword}
-                  className="flex-1 p-4 text-slate-800 font-semibold"
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} className="p-2">
-                  {showPassword ? <EyeOff size={18} color="#94A3B8" /> : <Eye size={18} color="#94A3B8" />}
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <TouchableOpacity 
-              onPress={handleSignUp}
-              activeOpacity={0.9}
-              disabled={isLoading}
-              className="bg-klino-primary p-4.5 py-4 rounded-2xl items-center shadow-[0_8px_30px_rgb(27,79,155,0.3)] flex-row justify-center"
-            >
-              {isLoading ? <ActivityIndicator color="white" className="mr-3" /> : null}
-              <Text className="text-white font-bold text-[15px] tracking-widest uppercase">
-                {isLoading ? 'Registrando...' : 'Crear Cuenta'}
-              </Text>
-            </TouchableOpacity>
-          </MotiView>
-
         </View>
-      </KeyboardAvoidingView>
+
+        {/* PROGRESS */}
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 24 }}>
+          {[1, 2, 3].map((i) => (
+            <View 
+              key={i} 
+              style={{ 
+                width: 32, 
+                height: 2, 
+                backgroundColor: step === i ? KLINO_COLORS.papel : 'rgba(255,255,255,0.3)' 
+              }} 
+            />
+          ))}
+        </View>
+
+        <KlinoText variant="label" color={KLINO_COLORS.papel} style={{ marginBottom: 16 }}>
+          PASO {step} DE 3
+        </KlinoText>
+
+        <View style={{ flex: 1 }}>
+          {step === 1 && (
+            <View>
+              <KlinoText variant="h1" color={KLINO_COLORS.papel} style={{ marginBottom: 16, fontSize: 36, lineHeight: 40 }}>
+                Tú atiendes.{'\n'}La historia clínica se{'\n'}escribe sola.
+              </KlinoText>
+              <KlinoText variant="body" color={KLINO_COLORS.papel} style={{ opacity: 0.9, fontSize: 18, lineHeight: 24 }}>
+                Klino escucha la consulta y arma el documento conforme a la NOM-004. Tú lo revisas y lo apruebas.
+              </KlinoText>
+            </View>
+          )}
+
+          {step === 2 && (
+            <View>
+              <KlinoText variant="h1" color={KLINO_COLORS.papel} style={{ marginBottom: 16, fontSize: 36, lineHeight: 40 }}>
+                Tu aprobación es tu{'\n'}firma
+              </KlinoText>
+              <KlinoText variant="body" color={KLINO_COLORS.papel} style={{ opacity: 0.9, fontSize: 18, lineHeight: 24 }}>
+                Mantienes presionado un segundo y el documento queda guardado a tu nombre. Nada se guarda antes.
+              </KlinoText>
+            </View>
+          )}
+
+          {step === 3 && (
+            <View>
+              <KlinoText variant="h1" color={KLINO_COLORS.papel} style={{ marginBottom: 16, fontSize: 36, lineHeight: 40 }}>
+                ¿Qué atiendes?
+              </KlinoText>
+              <KlinoText variant="body" color={KLINO_COLORS.papel} style={{ opacity: 0.9, fontSize: 18, lineHeight: 24, marginBottom: 32 }}>
+                Con esto armamos tu primer modo. Puedes cambiarlo o agregar más cuando quieras.
+              </KlinoText>
+              
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                {modes.map(mode => {
+                  const isSelected = selectedMode === mode;
+                  return (
+                    <TouchableOpacity
+                      key={mode}
+                      activeOpacity={0.8}
+                      onPress={() => setSelectedMode(mode)}
+                      style={{
+                        paddingVertical: 12,
+                        paddingHorizontal: 20,
+                        backgroundColor: isSelected ? KLINO_COLORS.papel : 'transparent',
+                        borderWidth: 1,
+                        borderColor: KLINO_COLORS.papel,
+                      }}
+                    >
+                      <KlinoText 
+                        variant="body" 
+                        color={isSelected ? KLINO_COLORS.verde : KLINO_COLORS.papel}
+                        style={{ fontWeight: isSelected ? 'bold' : 'normal' }}
+                      >
+                        {mode}
+                      </KlinoText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* FOOTER ACTION */}
+        <View>
+          <TouchableOpacity 
+            activeOpacity={0.9}
+            onPress={handleNext}
+            disabled={isLoading}
+            style={{
+              backgroundColor: KLINO_COLORS.papel,
+              paddingVertical: 18,
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: 16
+            }}
+          >
+            <KlinoText variant="label" color={KLINO_COLORS.verde}>
+              {isLoading ? 'CARGANDO...' : step === 1 ? 'EMPEZAR' : step === 2 ? 'ENTENDIDO' : 'ENTRAR A KLINO'}
+            </KlinoText>
+          </TouchableOpacity>
+          <KlinoText variant="small" color={KLINO_COLORS.papel} style={{ textAlign: 'center', opacity: 0.8 }}>
+            Puedes cambiar todo esto después.
+          </KlinoText>
+        </View>
+
+      </View>
     </SafeAreaView>
   );
-};
-
-export default SignUpScreen;
+}

@@ -1,5 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -11,7 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import { CheckCircle2, AlertCircle, Info, ShieldAlert } from 'lucide-react-native';
 import * as Notifications from 'expo-notifications';
 
-import { useColorScheme } from '@/components/useColorScheme';
+import { KLINO_COLORS } from '../src/constants/theme';
 import { ProfileProvider } from '../src/context/ProfileContext';
 import { registerBackgroundTasks } from '../src/services/backgroundTasks';
 
@@ -20,43 +20,39 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
-// 1. Configuración de Toasts Personalizados "PRO"
 const toastConfig = {
   success: (props: any) => (
     <BaseToast
       {...props}
       style={{ 
-        borderLeftColor: '#2A7D6F', 
-        backgroundColor: '#FFFFFF',
+        borderLeftColor: KLINO_COLORS.verde, 
+        backgroundColor: KLINO_COLORS.papel,
         height: 70,
-        borderRadius: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 5,
-        borderLeftWidth: 6,
+        borderRadius: 0,
+        borderWidth: 1,
+        borderColor: KLINO_COLORS.borderStrong,
+        borderLeftWidth: 4,
         width: '90%',
       }}
       contentContainerStyle={{ paddingHorizontal: 15 }}
       text1Style={{
         fontSize: 14,
-        fontWeight: '900',
-        color: '#1A2332',
+        fontWeight: 'bold',
+        color: KLINO_COLORS.tinta,
         textTransform: 'uppercase',
-        letterSpacing: 1
       }}
       text2Style={{
         fontSize: 12,
-        color: '#5A6B7E',
-        fontWeight: '500'
+        color: KLINO_COLORS.gris,
       }}
       renderLeadingIcon={() => (
-        <View className="justify-center pl-4">
-          <CheckCircle2 size={24} color="#2A7D6F" />
+        <View style={{ justifyContent: 'center', paddingLeft: 16 }}>
+          <CheckCircle2 size={24} color={KLINO_COLORS.verde} />
         </View>
       )}
     />
@@ -66,37 +62,19 @@ const toastConfig = {
       {...props}
       style={{ 
         borderLeftColor: '#E8820C', 
-        backgroundColor: '#FFFFFF',
+        backgroundColor: KLINO_COLORS.papel,
         height: 70,
-        borderRadius: 20,
-        borderLeftWidth: 6,
+        borderRadius: 0,
+        borderWidth: 1,
+        borderColor: KLINO_COLORS.borderStrong,
+        borderLeftWidth: 4,
         width: '90%',
       }}
-      text1Style={{ fontSize: 14, fontWeight: '900', color: '#1A2332' }}
-      text2Style={{ fontSize: 12, color: '#5A6B7E' }}
+      text1Style={{ fontSize: 14, fontWeight: 'bold', color: KLINO_COLORS.tinta, textTransform: 'uppercase' }}
+      text2Style={{ fontSize: 12, color: KLINO_COLORS.gris }}
       renderLeadingIcon={() => (
-        <View className="justify-center pl-4">
+        <View style={{ justifyContent: 'center', paddingLeft: 16 }}>
           <ShieldAlert size={24} color="#E8820C" />
-        </View>
-      )}
-    />
-  ),
-  info: (props: any) => (
-    <InfoToast
-      {...props}
-      style={{ 
-        borderLeftColor: '#1B4F9B', 
-        backgroundColor: '#FFFFFF',
-        height: 70,
-        borderRadius: 20,
-        borderLeftWidth: 6,
-        width: '90%',
-      }}
-      text1Style={{ fontSize: 14, fontWeight: '900', color: '#1A2332' }}
-      text2Style={{ fontSize: 12, color: '#5A6B7E' }}
-      renderLeadingIcon={() => (
-        <View className="justify-center pl-4">
-          <Info size={24} color="#1B4F9B" />
         </View>
       )}
     />
@@ -109,9 +87,23 @@ export {
 
 SplashScreen.preventAutoHideAsync();
 
+const KlinoTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: KLINO_COLORS.papel,
+    card: KLINO_COLORS.papel,
+    text: KLINO_COLORS.tinta,
+    border: KLINO_COLORS.borderHairline,
+    primary: KLINO_COLORS.verde,
+  },
+};
+
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    'FamiljenGrotesk-SemiBold': require('../assets/fonts/FamiljenGrotesk-Variable.ttf'),
+    'Spectral-Regular': require('../assets/fonts/Spectral-Regular.ttf'),
+    'Spectral-Medium': require('../assets/fonts/Spectral-Medium.ttf'),
     ...FontAwesome.font,
   });
 
@@ -132,36 +124,37 @@ export default function RootLayout() {
 
   return (
     <ProfileProvider>
-      <StatusBar style="dark" backgroundColor="#F4F7FB" />
-      <RootLayoutNav />
-      {/* 2. Pasamos la configuración personalizada */}
-      <Toast config={toastConfig} />
+      <View style={{ flex: 1, backgroundColor: KLINO_COLORS.papel }}>
+        <StatusBar style="dark" backgroundColor={KLINO_COLORS.papel} />
+        <RootLayoutNav />
+        <Toast config={toastConfig} />
+      </View>
     </ProfileProvider>
   );
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={KlinoTheme}>
       <Stack
         screenOptions={{
           headerShown: false,
-          animation: 'slide_from_right',
-          contentStyle: { backgroundColor: '#F4F7FB' },
+          animation: 'fade',
+          contentStyle: { backgroundColor: KLINO_COLORS.papel },
           gestureEnabled: true,
+          fullScreenGestureEnabled: true,
         }}
       >
         <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="edit-profile" options={{ animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="edit-profile" />
         <Stack.Screen name="modes-settings" />
         <Stack.Screen name="notifications" />
-        <Stack.Screen name="subscription" />
         <Stack.Screen name="security" />
         <Stack.Screen name="note-detail" />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="note-review" />
+        <Stack.Screen name="live-consultation" />
+        <Stack.Screen name="patient-timeline" />
       </Stack>
     </ThemeProvider>
   );

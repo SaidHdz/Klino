@@ -16,9 +16,8 @@ export default function App() {
           initialRouteName="Login"
           screenOptions={{
             headerShown: false,
-            gestureEnabled: true, // Habilitar gestos
-            gestureDirection: 'horizontal', // Dirección horizontal
-            ...TransitionPresets.SlideFromRightIOS, // Animación premium suave
+            gestureEnabled: true,
+            ...TransitionPresets.SlideFromRightIOS,
           }}
         >
           <Stack.Screen name="Login" component={LoginScreen} />

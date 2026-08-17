@@ -1,151 +1,92 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Bell, BatteryLow, MessageCircle, FileText, CheckCircle2, Trash, Trash2 } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { MotiView, AnimatePresence } from 'moti';
-import Header from '../components/Header';
-import { useProfile } from '../context/ProfileContext';
-import { formatTimeAgo } from '../utils/time';
+import React from 'react';
+import { View, ScrollView, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
+import { ArrowLeft, Check, ChevronRight } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { KLINO_COLORS } from '../constants/theme';
+import { KlinoText } from '../components/common/KlinoText';
 
-const ICON_MAP: Record<string, any> = {
-  BatteryLow,
-  MessageCircle,
-  FileText,
-  CheckCircle2
-};
-
-const NotificationsScreen = () => {
-  const { notificationsList, markNotificationRead, deleteNotification, clearAllNotifications } = useProfile();
-  const [filter, setFilter] = useState('all');
-
-  const filteredNotifications = filter === 'all' 
-    ? notificationsList 
-    : notificationsList.filter(n => n.type === filter);
-
-  const handlePressNotification = async (id: string, unread: boolean) => {
-    if (unread) {
-      await Haptics.selectionAsync();
-      markNotificationRead(id);
-    }
-  };
-
-  const handleDelete = (id: string) => {
-    Alert.alert('Eliminar', '¿Borrar esta notificación?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: async () => {
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        deleteNotification(id);
-      }}
-    ]);
-  };
-
-  const handleClearAll = () => {
-    Alert.alert('Limpiar Todo', '¿Estás seguro de que deseas borrar TODAS las notificaciones?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Limpiar', style: 'destructive', onPress: async () => {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        clearAllNotifications();
-      }}
-    ]);
-  };
+export default function NotificationsScreen() {
+  const router = useRouter();
 
   return (
-    <View className="flex-1 bg-klino-background">
-      <Header title="Notificaciones" showBack={true} />
-
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <View className="p-6">
-          
-          {/* Filtros */}
-          <View className="flex-row items-center mb-6">
-            <View className="flex-row flex-1 bg-klino-card p-1.5 rounded-2xl border border-klino-background">
-              {['all', 'hardware', 'patient'].map((f) => (
-                <TouchableOpacity
-                  key={f}
-                  onPress={() => {
-                    Haptics.selectionAsync();
-                    setFilter(f);
-                  }}
-                  className={`flex-1 py-2 rounded-xl items-center ${filter === f ? 'bg-klino-background shadow-sm' : ''}`}
-                >
-                  <Text className={`text-[10px] font-black uppercase tracking-widest ${filter === f ? 'text-klino-primary' : 'text-klino-subtext'}`}>
-                    {f === 'all' ? 'Todas' : f === 'hardware' ? 'Hardware' : 'Pacientes'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            
-            {notificationsList.length > 0 && (
-              <TouchableOpacity 
-                onPress={handleClearAll}
-                className="w-10 h-10 bg-orange-50 rounded-xl items-center justify-center ml-3 border border-orange-100"
-              >
-                <Trash2 size={18} color="#E8820C" />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Lista */}
-          <AnimatePresence>
-            {filteredNotifications.map((noti, index) => {
-              const IconComponent = ICON_MAP[noti.icon] || Bell;
-              return (
-                <MotiView
-                  key={noti.id}
-                  from={{ opacity: 0, scale: 0.95, translateY: 10 }}
-                  animate={{ opacity: 1, scale: 1, translateY: 0 }}
-                  transition={{ type: 'timing', delay: index * 50 }}
-                >
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => handlePressNotification(noti.id, noti.unread)}
-                    className={`bg-klino-card p-5 rounded-[28px] mb-4 border shadow-sm flex-row items-center relative ${noti.unread ? 'border-klino-primary/20 bg-blue-50/20' : 'border-klino-background'}`}
-                  >
-                    {noti.unread && (
-                      <View className="absolute top-5 right-5 w-2 h-2 rounded-full bg-klino-primary" />
-                    )}
-                    
-                    <View 
-                      style={{ backgroundColor: `${noti.color}15` }}
-                      className="w-12 h-12 rounded-2xl justify-center items-center mr-4"
-                    >
-                      <IconComponent size={22} color={noti.color} />
-                    </View>
-
-                    <View className="flex-1">
-                      <View className="flex-row justify-between items-start pr-4">
-                        <Text className={`font-black text-[13px] ${noti.unread ? 'text-klino-text' : 'text-klino-subtext'}`} numberOfLines={1}>{noti.title}</Text>
-                        <Text className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">{formatTimeAgo(noti.time)}</Text>
-                      </View>
-                      <Text className="text-[11px] text-klino-subtext font-medium mt-1 leading-4" numberOfLines={2}>
-                        {noti.description}
-                      </Text>
-                    </View>
-                    
-                    <TouchableOpacity 
-                      onPress={() => handleDelete(noti.id)} 
-                      className="p-2 ml-1"
-                    >
-                      <Trash size={16} color="#CBD5E1" />
-                    </TouchableOpacity>
-
-                  </TouchableOpacity>
-                </MotiView>
-              );
-            })}
-          </AnimatePresence>
-
-          {filteredNotifications.length === 0 && (
-            <View className="flex-1 items-center justify-center py-20">
-              <Bell size={48} color="#CBD5E1" strokeWidth={1} />
-              <Text className="text-klino-subtext font-bold text-sm uppercase mt-4 tracking-widest">No hay notificaciones</Text>
-            </View>
-          )}
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: KLINO_COLORS.papel }}>
+      
+      {/* HEADER */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 40 : 16, paddingBottom: 24 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginRight: 16 }}>
+            <ArrowLeft size={24} color={KLINO_COLORS.tinta} strokeWidth={1.75} />
+          </TouchableOpacity>
+          <KlinoText variant="h2" style={{ fontSize: 20 }}>Avisos</KlinoText>
         </View>
-      </ScrollView>
-    </View>
-  );
-};
+        <TouchableOpacity>
+          <KlinoText variant="label" color={KLINO_COLORS.verde} style={{ letterSpacing: 1, fontWeight: 'bold' }}>MARCAR LEÍDOS</KlinoText>
+        </TouchableOpacity>
+      </View>
 
-export default NotificationsScreen;
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        
+        {/* SECCIÓN HOY */}
+        <View style={{ paddingHorizontal: 24, paddingVertical: 12, borderTopWidth: 1, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
+          <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>HOY</KlinoText>
+        </View>
+
+        {/* Notificación No leída */}
+        <View style={{ flexDirection: 'row', paddingHorizontal: 24, paddingVertical: 20, backgroundColor: KLINO_COLORS.papelHondo, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
+          <View style={{ width: 20, height: 20, backgroundColor: KLINO_COLORS.ambar, marginTop: 2, marginRight: 16 }} />
+          <View style={{ flex: 1 }}>
+            <KlinoText variant="body" style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 4 }}>3 documentos esperan tu aprobación</KlinoText>
+            <KlinoText variant="small" color={KLINO_COLORS.gris}>Historia clínica de Said, nota de Lucía y una receta</KlinoText>
+          </View>
+        </View>
+
+        {/* Notificación Leída */}
+        <View style={{ flexDirection: 'row', paddingHorizontal: 24, paddingVertical: 20, backgroundColor: KLINO_COLORS.papel, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
+          <View style={{ width: 20, height: 20, borderWidth: 1, borderColor: KLINO_COLORS.borderStrong, justifyContent: 'center', alignItems: 'center', marginTop: 2, marginRight: 16 }}>
+            <Check size={14} color={KLINO_COLORS.verde} strokeWidth={2.5} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <KlinoText variant="body" style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 4 }}>Ramiro Cepeda confirmó su cita</KlinoText>
+            <KlinoText variant="small" color={KLINO_COLORS.gris}>Hoy 16:30 · respondió por WhatsApp</KlinoText>
+          </View>
+        </View>
+
+        {/* SECCIÓN DOMINGO PASADO */}
+        <View style={{ paddingHorizontal: 24, paddingVertical: 12, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
+          <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>DOMINGO PASADO</KlinoText>
+        </View>
+
+        {/* Resumen Semanal Card */}
+        <TouchableOpacity activeOpacity={0.9} style={{ backgroundColor: KLINO_COLORS.verde, padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <KlinoText variant="label" color={KLINO_COLORS.papelHondo} style={{ letterSpacing: 2 }}>RESUMEN SEMANAL</KlinoText>
+            <ChevronRight size={20} color={KLINO_COLORS.papelHondo} strokeWidth={1.75} />
+          </View>
+          <KlinoText variant="h2" color={KLINO_COLORS.papel} style={{ fontSize: 28, marginBottom: 8 }}>Te ahorraste 6 h 40 m</KlinoText>
+          <KlinoText variant="small" color={KLINO_COLORS.papelHondo} style={{ lineHeight: 20, marginBottom: 32 }}>74 documentos dictados · 71 aprobados · 41 s en promedio para aprobar</KlinoText>
+          
+          {/* Gráfico de barras simplificado */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 40 }}>
+            <View style={{ flex: 1, height: 12, backgroundColor: 'rgba(244, 241, 234, 0.4)', marginHorizontal: 2 }} />
+            <View style={{ flex: 1, height: 16, backgroundColor: 'rgba(244, 241, 234, 0.4)', marginHorizontal: 2 }} />
+            <View style={{ flex: 1, height: 14, backgroundColor: 'rgba(244, 241, 234, 0.4)', marginHorizontal: 2 }} />
+            <View style={{ flex: 1, height: 24, backgroundColor: 'rgba(244, 241, 234, 0.4)', marginHorizontal: 2 }} />
+            <View style={{ flex: 1, height: 20, backgroundColor: 'rgba(244, 241, 234, 0.4)', marginHorizontal: 2 }} />
+            <View style={{ flex: 1, height: 32, backgroundColor: KLINO_COLORS.ambar, marginHorizontal: 2 }} />
+            <View style={{ flex: 1, height: 18, backgroundColor: 'rgba(244, 241, 234, 0.4)', marginHorizontal: 2 }} />
+          </View>
+        </TouchableOpacity>
+
+        {/* Notificación Simple */}
+        <View style={{ flexDirection: 'row', paddingHorizontal: 24, paddingVertical: 20, backgroundColor: KLINO_COLORS.papel }}>
+          <View style={{ width: 20, height: 20, borderWidth: 1, borderColor: KLINO_COLORS.borderStrong, marginTop: 2, marginRight: 16 }} />
+          <View style={{ flex: 1 }}>
+            <KlinoText variant="body" style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 4 }}>Tu recibo de agosto está listo</KlinoText>
+            <KlinoText variant="small" color={KLINO_COLORS.gris}>1 de agosto</KlinoText>
+          </View>
+        </View>
+
+      </ScrollView>
+    </SafeAreaView>
+  );
+}

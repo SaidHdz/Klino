@@ -1,252 +1,144 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
-import { Settings, Sliders, Bell, CreditCard, ShieldCheck, LogOut, Mail, ChevronRight, Moon } from 'lucide-react-native';
+import { View, ScrollView, TouchableOpacity, SafeAreaView, Platform, Alert } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { MotiView } from 'moti';
-import { useColorScheme } from 'nativewind';
-import Header from '../components/Header';
+import { KLINO_COLORS } from '../constants/theme';
+import { KlinoText } from '../components/common/KlinoText';
+import { KlinoButton } from '../components/common/KlinoButton';
 import { useProfile } from '../context/ProfileContext';
-import { supabase } from '../utils/supabase';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SECTIONS = [
-  {
-    title: 'PERSONAL Y PAGOS',
-    data: [
-      { icon: Settings, label: 'Editar Perfil', sublabel: 'Nombre, especialidad y fotografía' },
-      { icon: CreditCard, label: 'Suscripción', sublabel: 'Plan actual y facturación' },
-    ]
-  },
-  {
-    title: 'SISTEMA Y HARDWARE',
-    data: [
-      { icon: Sliders, label: 'Ajustes de Modos', sublabel: 'IA, formatos SOAP y hardware' },
-      { icon: Bell, label: 'Alertas', sublabel: 'Notificaciones y recordatorios' },
-      { icon: Moon, label: 'Modo Oscuro', sublabel: 'Cambiar apariencia de la app' },
-    ]
-  },
-  {
-    title: 'PRIVACIDAD Y SEGURIDAD',
-    data: [
-      { icon: ShieldCheck, label: 'Seguridad', sublabel: 'Autenticación biométrica y encriptación' },
-    ]
-  }
-];
-
-const ProfileScreen = () => {
+export default function ProfileScreen() {
   const router = useRouter();
-  const { doctorName, profileImage } = useProfile();
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [userEmail, setUserEmail] = React.useState('medico@klino.med');
-  const { colorScheme, toggleColorScheme } = useColorScheme();
+  const { doctorName, logout, appSettings, updateSettings } = useProfile();
 
-
-  React.useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email) setUserEmail(user.email);
-      setIsLoading(false);
-    };
-    fetchUser();
-  }, []);
-
-  const handleOptionPress = async (label: string) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    switch (label) {
-      case 'Editar Perfil': router.push('/edit-profile'); break;
-      case 'Ajustes de Modos': router.push('/modes-settings'); break;
-      case 'Alertas': router.push('/notifications'); break;
-      case 'Suscripción': router.push('/subscription'); break;
-      case 'Seguridad': router.push('/security'); break;
-      case 'Modo Oscuro': toggleColorScheme(); break;
-    }
-  };
-
-  const handleLogout = async () => {
+  const handleLogout = () => {
     Alert.alert(
       "Cerrar Sesión",
-      "¿Estás seguro de que deseas salir del portal?",
+      "¿Estás seguro de que deseas salir?",
       [
         { text: "Cancelar", style: "cancel" },
         { 
           text: "Salir", 
           style: "destructive", 
-          onPress: () => {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            
-            // Redirigir de forma atómica a la raíz inmediatamente
+          onPress: async () => {
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            await logout();
             router.replace('/');
-
-            // Limpiar sesión en background sin bloquear la UI
-            setTimeout(async () => {
-              try {
-                await supabase.auth.signOut();
-                await AsyncStorage.removeItem('@Klino_USER_PROFILE');
-              } catch (e) {
-                console.log('Logout error', e);
-              }
-            }, 100);
           } 
         }
       ]
     );
   };
 
-  const SkeletonItem = () => (
-    <View className="flex-row items-center py-4 border-b border-slate-100">
-      <MotiView
-        from={{ opacity: 0.3 }}
-        animate={{ opacity: 0.6 }}
-        transition={{ type: 'timing', duration: 1000, loop: true }}
-        className="w-8 h-8 bg-slate-100 rounded-lg mr-4"
-      />
-      <View className="flex-1">
-        <MotiView
-          from={{ opacity: 0.3 }}
-          animate={{ opacity: 0.6 }}
-          transition={{ type: 'timing', duration: 1000, loop: true }}
-          className="h-4 bg-slate-100 rounded-full w-3/4 mb-2"
-        />
-        <MotiView
-          from={{ opacity: 0.3 }}
-          animate={{ opacity: 0.6 }}
-          transition={{ type: 'timing', duration: 1000, loop: true }}
-          className="h-3 bg-slate-100 rounded-full w-1/2"
-        />
-      </View>
-    </View>
-  );
-
-  const OptionItem = ({ icon: Icon, label, sublabel, index, isLast }: any) => (
-    <TouchableOpacity 
-      onPress={() => handleOptionPress(label)}
-      activeOpacity={0.7}
-      className={`p-4 flex-row items-center justify-between bg-white dark:bg-slate-800 ${isLast ? '' : 'border-b border-slate-100 dark:border-slate-700'}`}
-    >
-      <View className="flex-row items-center flex-1">
-        <View className="w-8 h-8 bg-blue-50/50 rounded-lg justify-center items-center mr-4 border border-blue-100/50">
-          <Icon size={18} color="#1B4F9B" />
-        </View>
-        <View className="flex-1">
-          <Text className="font-semibold text-slate-900 dark:text-white text-[15px]">{label}</Text>
-          <Text className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">{sublabel}</Text>
-        </View>
-      </View>
-      <ChevronRight size={18} color="#CBD5E1" />
-    </TouchableOpacity>
-  );
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'DR';
+  };
 
   return (
-    <View className="flex-1 bg-klino-background dark:bg-slate-900">
-      <Header hideProfilePhoto={true} />
-
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <View className="p-6">
-          
-          {isLoading ? (
-            <MotiView 
-              from={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200/50 dark:border-slate-700 shadow-[0_2px_10px_rgb(0,0,0,0.02)] items-center mb-8"
-            >
-              <MotiView
-                from={{ opacity: 0.3 }}
-                animate={{ opacity: 0.6 }}
-                transition={{ type: 'timing', duration: 1000, loop: true }}
-                className="w-28 h-28 rounded-full bg-slate-100 mb-6"
-              />
-              <MotiView
-                from={{ opacity: 0.3 }}
-                animate={{ opacity: 0.6 }}
-                transition={{ type: 'timing', duration: 1000, loop: true }}
-                className="h-6 bg-slate-100 rounded-full w-1/2 mb-4"
-              />
-              <MotiView
-                from={{ opacity: 0.3 }}
-                animate={{ opacity: 0.6 }}
-                transition={{ type: 'timing', duration: 1000, loop: true }}
-                className="h-3 bg-slate-100 rounded-full w-1/3"
-              />
-            </MotiView>
-          ) : (
-            <MotiView
-              from={{ opacity: 0, scale: 0.95, translateY: 10 }}
-              animate={{ opacity: 1, scale: 1, translateY: 0 }}
-              transition={{ type: 'timing', duration: 500 }}
-              className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200/50 dark:border-slate-700 shadow-[0_2px_10px_rgb(0,0,0,0.02)] items-center mb-8"
-            >
-              <View className="w-28 h-28 rounded-full border border-slate-200 dark:border-slate-600 overflow-hidden mb-5 shadow-sm">
-                {profileImage ? (
-                  <Image 
-                    source={{ uri: profileImage }}
-                    className="w-full h-full"
-                  />
-                ) : (
-                  <Image 
-                    source={require('../../assets/images/fotosnupi.png')}
-                    className="w-full h-full"
-                  />
-                )}
-              </View>
-              <Text className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">{doctorName}</Text>
-              <Text className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-widest text-[10px] mt-1.5">
-                Cardiólogo Especialista
-              </Text>
-              
-              <View className="flex-row items-center mt-5">
-                <View className="flex-row items-center bg-slate-100/50 dark:bg-slate-700/50 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-600">
-                  <Mail size={12} color="#64748B" />
-                  <Text className="ml-2 text-[11px] text-slate-500 dark:text-slate-300 font-semibold">{userEmail}</Text>
-                </View>
-              </View>
-            </MotiView>
-          )}
-
-          {isLoading ? (
-            <View className="mb-8">
-              <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 100 }}>
-                <Text className="text-slate-500 dark:text-slate-400 font-semibold text-[11px] uppercase tracking-[1.5px] mb-2 ml-2">CARGANDO...</Text>
-              </MotiView>
-              <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 200 }}>
-                <View className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-700 shadow-[0_2px_10px_rgb(0,0,0,0.02)] overflow-hidden px-4">
-                  <SkeletonItem />
-                  <SkeletonItem />
-                  <SkeletonItem />
-                </View>
-              </MotiView>
-            </View>
-          ) : (
-            SECTIONS.map((section, sIndex) => (
-              <View key={section.title} className="mb-8">
-                <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 100 + (sIndex * 100) }}>
-                  <Text className="text-slate-500 dark:text-slate-400 font-semibold text-[11px] uppercase tracking-[1.5px] mb-2 ml-2">{section.title}</Text>
-                </MotiView>
-                
-                <MotiView from={{ opacity: 0, translateY: 10 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 200 + (sIndex * 100) }}>
-                  <View className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-700 shadow-[0_2px_10px_rgb(0,0,0,0.02)] overflow-hidden">
-                    {section.data.map((item, index) => (
-                      <OptionItem key={item.label} {...item} index={index} isLast={index === section.data.length - 1} />
-                    ))}
-                  </View>
-                </MotiView>
-              </View>
-            ))
-          )}
-
-          {!isLoading && (
-            <MotiView from={{ opacity: 0, translateY: 20 }} animate={{ opacity: 1, translateY: 0 }} transition={{ type: 'timing', duration: 400, delay: 300 }}>
-              <TouchableOpacity onPress={handleLogout} className="flex-row items-center justify-center py-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/60 dark:border-slate-700 shadow-[0_2px_10px_rgb(0,0,0,0.02)] mb-6" activeOpacity={0.7}>
-                <LogOut size={18} color="#EF4444" />
-                <Text className="ml-2 text-red-500 dark:text-red-400 font-semibold text-[15px]">Cerrar Sesión Segura</Text>
-              </TouchableOpacity>
-            </MotiView>
-          )}
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: KLINO_COLORS.papel }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 60 : 32, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        
+        {/* TITULAR */}
+        <View style={{ marginBottom: 24 }}>
+          <KlinoText variant="h2">Tu cuenta</KlinoText>
         </View>
-      </ScrollView>
-    </View>
-  );
-};
 
-export default ProfileScreen;
+        {/* TARJETA DE PERFIL Y EDITAR */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, paddingVertical: 16, borderTopWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+            <View style={{ width: 64, height: 64, backgroundColor: KLINO_COLORS.verde, justifyContent: 'center', alignItems: 'center', marginRight: 16 }}>
+              <KlinoText variant="h3" color={KLINO_COLORS.papel}>{getInitials(doctorName)}</KlinoText>
+            </View>
+            <View style={{ flex: 1, paddingRight: 8 }}>
+              <KlinoText variant="h3" style={{ marginBottom: 4 }}>{doctorName}</KlinoText>
+              <KlinoText variant="label" color={KLINO_COLORS.gris}>MEDICINA GENERAL · CED. 7841203</KlinoText>
+            </View>
+          </View>
+          <TouchableOpacity onPress={() => router.push('/edit-profile')}>
+             <KlinoText variant="label" color={KLINO_COLORS.verde} style={{ fontWeight: 'bold' }}>EDITAR</KlinoText>
+          </TouchableOpacity>
+        </View>
+
+        {/* TARJETA ESTA SEMANA */}
+        <TouchableOpacity activeOpacity={0.9} style={{ backgroundColor: KLINO_COLORS.verde, padding: 24, marginBottom: 32 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <KlinoText variant="label" color={KLINO_COLORS.papelHondo} style={{ letterSpacing: 2 }}>ESTA SEMANA</KlinoText>
+            <ChevronRight size={20} color={KLINO_COLORS.papelHondo} strokeWidth={1.75} />
+          </View>
+          <KlinoText variant="h1" color={KLINO_COLORS.papel} style={{ fontSize: 48, marginBottom: 8 }}>6 h 40 m</KlinoText>
+          <KlinoText variant="body" color={KLINO_COLORS.papelHondo} style={{ lineHeight: 24 }}>que no pasaste escribiendo. 74 documentos dictados.</KlinoText>
+        </TouchableOpacity>
+
+        {/* ACCESO AL DICTADO */}
+        <View style={{ marginBottom: 32 }}>
+          <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 16 }}>ACCESO AL DICTADO</KlinoText>
+          
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            onPress={() => updateSettings('appearance', 'dictationButtonOrientation', 'vertical')}
+            style={{ flexDirection: 'row', borderWidth: 1, borderColor: appSettings.appearance.dictationButtonOrientation === 'vertical' ? KLINO_COLORS.verde : KLINO_COLORS.borderStrong, backgroundColor: appSettings.appearance.dictationButtonOrientation === 'vertical' ? KLINO_COLORS.papelHondo : KLINO_COLORS.papel, padding: 16, marginBottom: 16 }}
+          >
+            <View style={{ width: 24, height: 24, borderWidth: appSettings.appearance.dictationButtonOrientation === 'vertical' ? 0 : 1, borderColor: KLINO_COLORS.borderStrong, backgroundColor: appSettings.appearance.dictationButtonOrientation === 'vertical' ? KLINO_COLORS.verde : 'transparent', marginRight: 16, marginTop: 2 }} />
+            <View style={{ flex: 1 }}>
+              <KlinoText variant="body" style={{ fontWeight: 'bold', marginBottom: 4 }}>Asa en el borde</KlinoText>
+              <KlinoText variant="small" color={KLINO_COLORS.gris}>Pestaña vertical pegada al lado derecho, a la altura del pulgar. No ocupa alto.</KlinoText>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            onPress={() => updateSettings('appearance', 'dictationButtonOrientation', 'horizontal')}
+            style={{ flexDirection: 'row', borderWidth: 1, borderColor: appSettings.appearance.dictationButtonOrientation === 'horizontal' ? KLINO_COLORS.verde : KLINO_COLORS.borderStrong, backgroundColor: appSettings.appearance.dictationButtonOrientation === 'horizontal' ? KLINO_COLORS.papelHondo : KLINO_COLORS.papel, padding: 16 }}
+          >
+            <View style={{ width: 24, height: 24, borderWidth: appSettings.appearance.dictationButtonOrientation === 'horizontal' ? 0 : 1, borderColor: KLINO_COLORS.borderStrong, backgroundColor: appSettings.appearance.dictationButtonOrientation === 'horizontal' ? KLINO_COLORS.verde : 'transparent', marginRight: 16, marginTop: 2 }} />
+            <View style={{ flex: 1 }}>
+              <KlinoText variant="body" style={{ fontWeight: 'bold', marginBottom: 4 }}>Banda sobre la barra</KlinoText>
+              <KlinoText variant="small" color={KLINO_COLORS.gris}>Barra verde de ancho completo arriba de la navegación. Imposible de no ver.</KlinoText>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* CONSULTORIO */}
+        <View style={{ marginBottom: 32 }}>
+          <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 16 }}>CONSULTORIO</KlinoText>
+          <View style={{ borderTopWidth: 1, borderColor: KLINO_COLORS.borderHairline }}>
+            <MenuItem title="Modos y formatos" subtitle="Consultorio y Hospital · 4 formatos" onPress={() => router.push('/formats')} />
+            <MenuItem title="Avisos y recordatorios" subtitle="Pendientes, citas y resumen semanal" onPress={() => router.push('/notifications')} />
+            <MenuItem title="Suscripción" subtitle="Mensual · siguiente cargo el 1 de septiembre" onPress={() => router.push('/subscription')} />
+            <MenuItem title="Seguridad" subtitle="Huella, NIP y dispositivos" />
+          </View>
+        </View>
+
+        {/* CERRAR SESIÓN */}
+        <TouchableOpacity 
+          activeOpacity={0.7} 
+          onPress={handleLogout} 
+          style={{ borderWidth: 1, borderColor: '#C05A3E', paddingVertical: 16, alignItems: 'center', marginBottom: 24, backgroundColor: KLINO_COLORS.papelHondo }}
+        >
+          <KlinoText variant="label" color="#C05A3E" style={{ fontWeight: 'bold' }}>CERRAR SESIÓN</KlinoText>
+        </TouchableOpacity>
+
+        {/* FOOTER */}
+        <View style={{ alignItems: 'center', paddingBottom: 24 }}>
+          <KlinoText variant="small" color={KLINO_COLORS.gris}>Klino v2.0 · Ravyn Studio</KlinoText>
+        </View>
+
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const MenuItem = ({ title, subtitle, onPress }: any) => (
+  <TouchableOpacity 
+    activeOpacity={0.7}
+    onPress={onPress}
+    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderHairline }}
+  >
+    <View style={{ flex: 1, paddingRight: 16 }}>
+      <KlinoText variant="body" style={{ fontWeight: 'bold', marginBottom: 4, fontSize: 18 }}>{title}</KlinoText>
+      <KlinoText variant="small" color={KLINO_COLORS.gris}>{subtitle}</KlinoText>
+    </View>
+    <ChevronRight size={20} color={KLINO_COLORS.gris} strokeWidth={1.75} />
+  </TouchableOpacity>
+);

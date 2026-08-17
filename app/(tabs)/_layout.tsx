@@ -1,87 +1,71 @@
 import React from 'react';
-import { MaterialTopTabs } from '../../components/MaterialTopTabs';
-import { LayoutDashboard, FileText, Smartphone, User } from 'lucide-react-native';
+import { Tabs } from 'expo-router';
+import { LayoutDashboard, FileText, Calendar, User } from 'lucide-react-native';
 import { View } from 'react-native';
-import { useColorScheme } from 'nativewind';
-import { useProfile } from '../../src/context/ProfileContext';
+import { KLINO_COLORS } from '../../src/constants/theme';
+import { DictationHandle } from '../../src/components/dictation/DictationHandle';
 
 export default function TabLayout() {
-  const { primaryColor } = useProfile();
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === 'dark';
-
   return (
-    <MaterialTopTabs
-      tabBarPosition="bottom"
-      screenOptions={{
-        tabBarActiveTintColor: primaryColor,
-        tabBarInactiveTintColor: isDark ? '#64748B' : '#5A6B7E',
-        tabBarShowLabel: true,
-        tabBarIndicatorStyle: { height: 0 },
-        tabBarStyle: {
-          backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-          borderTopWidth: 1,
-          borderTopColor: isDark ? '#1E293B' : '#F4F7FB',
-          height: 85,
-          paddingBottom: 25,
-          paddingTop: 15,
-          borderTopLeftRadius: 30,
-          borderTopRightRadius: 30,
-          elevation: 0,
-          shadowOpacity: 0,
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: 'bold',
-          marginTop: 4,
-          textTransform: 'none',
-        }
-      }}
-    >
-      <MaterialTopTabs.Screen
-        name="index"
-        options={{
-          title: 'Panel',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
-              <LayoutDashboard size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
-            </View>
-          ),
+    <View style={{ flex: 1, backgroundColor: KLINO_COLORS.papel }}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: KLINO_COLORS.verde,
+          tabBarInactiveTintColor: KLINO_COLORS.gris,
+          tabBarStyle: {
+            backgroundColor: KLINO_COLORS.papelHondo,
+            borderTopWidth: 1,
+            borderTopColor: KLINO_COLORS.borderHairline,
+            elevation: 0,
+            shadowOpacity: 0,
+            height: 65,
+            paddingBottom: 8,
+            paddingTop: 8,
+          },
+          tabBarLabelStyle: {
+            fontFamily: 'FamiljenGrotesk-SemiBold',
+            fontSize: 10,
+            textTransform: 'none',
+          }
         }}
-      />
-      <MaterialTopTabs.Screen
-        name="records"
-        options={{
-          title: 'Expedientes',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
-              <FileText size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
-            </View>
-          ),
-        }}
-      />
-      <MaterialTopTabs.Screen
-        name="devices"
-        options={{
-          title: 'Hardware',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
-              <Smartphone size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
-            </View>
-          ),
-        }}
-      />
-      <MaterialTopTabs.Screen
-        name="profile"
-        options={{
-          title: 'Perfil',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{ transform: [{ scale: focused ? 1.15 : 1 }] }}>
-              <User size={24} color={color} strokeWidth={focused ? 2.5 : 2} />
-            </View>
-          ),
-        }}
-      />
-    </MaterialTopTabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Panel',
+            tabBarIcon: ({ color }) => <LayoutDashboard size={24} color={color} strokeWidth={1.75} />,
+          }}
+        />
+        <Tabs.Screen
+          name="records"
+          options={{
+            title: 'Expedientes',
+            tabBarIcon: ({ color }) => <FileText size={24} color={color} strokeWidth={1.75} />,
+          }}
+        />
+        <Tabs.Screen
+          name="agenda"
+          options={{
+            title: 'Agenda',
+            tabBarIcon: ({ color }) => <Calendar size={24} color={color} strokeWidth={1.75} />,
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Cuenta',
+            tabBarIcon: ({ color }) => <User size={24} color={color} strokeWidth={1.75} />,
+          }}
+        />
+        <Tabs.Screen
+          name="patient-timeline"
+          options={{
+            href: null,
+          }}
+        />
+      </Tabs>
+      <DictationHandle />
+    </View>
   );
 }

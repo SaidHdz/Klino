@@ -1,0 +1,82 @@
+/* Klino — design tokens
+   Pega este bloque en tu :root. Los nombres corresponden 1:1 con brand.md.
+   Ravyn Studio · v1.0 · 2026 */
+
+:root {
+  /* ---- Color ---- */
+  --color-papel: #F4F1EA;          /* fondo dominante */
+  --color-papel-hondo: #EDE8DE;    /* superficies, tarjetas */
+  --color-tinta: #16191B;          /* texto */
+  --color-verde: #1F5F4B;          /* primario */
+  --color-ambar: #E0913A;          /* acento y estado: "requiere tu revisión" */
+  --color-ambar-tinta: #8A5311;    /* ámbar cuando debe ser texto */
+  --color-gris: #63635B;           /* metadatos y etiquetas */
+  --color-error: #B0311F;          /* estados destructivos */
+
+  /* alias semánticos */
+  --color-bg: var(--color-papel);
+  --color-surface: var(--color-papel-hondo);
+  --color-text: var(--color-tinta);
+  --color-text-muted: var(--color-gris);
+  --color-primary: var(--color-verde);
+  --color-on-primary: var(--color-papel);
+  --color-attention: var(--color-ambar);
+  --color-border: rgba(22, 25, 27, 0.16);
+  --color-border-strong: rgba(22, 25, 27, 0.32);
+
+  /* ---- Tipografía ---- */
+  --font-display: "Familjen Grotesk", system-ui, sans-serif;
+  --font-body: "Spectral", Georgia, serif;
+  --font-weight-display: 600;
+  --font-weight-body: 400;
+  --font-weight-body-medium: 500;
+
+  --font-size-h1: 52px;
+  --font-size-h2: 34px;
+  --font-size-h3: 24px;
+  --font-size-subtitle: 22px;
+  --font-size-body: 17px;
+  --font-size-small: 15px;
+  --font-size-label: 13px;
+
+  --line-height-h1: 1.05;
+  --line-height-h2: 1.12;
+  --line-height-h3: 1.2;
+  --line-height-subtitle: 1.45;
+  --line-height-body: 1.62;
+  --line-height-small: 1.55;
+  --line-height-label: 1;
+
+  --letter-spacing-h1: -0.015em;
+  --letter-spacing-label: 0.24em;
+  --letter-spacing-wordmark: 0.09em;
+
+  --measure-body: 72ch; /* medida máxima de línea */
+
+  /* ---- Espaciado ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 44px;
+  --space-8: 56px;
+  --space-9: 72px;
+
+  /* ---- Radio ---- */
+  /* La marca es de esquina viva. El único radio permitido es el del ícono de app. */
+  --radius-none: 0px;
+  --radius-app-icon: 22%;
+
+  /* ---- Elevación ---- */
+  /* Klino no usa sombras. La jerarquía se hace con filete y color. */
+  --shadow-none: none;
+  --border-hairline: 1px solid var(--color-border);
+
+  /* ---- Iconos ---- */
+  --icon-stroke-width: 1.75px;
+  --icon-linecap: butt;
+  --icon-linejoin: miter;
+  --icon-grid: 24px;
+}

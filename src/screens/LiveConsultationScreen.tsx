@@ -1,0 +1,266 @@
+import React, { useState, useEffect } from 'react';
+import { View, SafeAreaView, TouchableOpacity, Platform, StyleSheet, Alert } from 'react-native';
+import { X } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { Audio } from 'expo-av';
+import { KLINO_COLORS } from '../constants/theme';
+import { KlinoText } from '../components/common/KlinoText';
+import { useProfile } from '../context/ProfileContext';
+import { formatClinicalJson } from '../utils/formatClinicalJson';
+
+export default function LiveConsultationScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const folderParam = (params.folder as string) || 'consulta_general';
+
+  const { addNote, dashboardProfileId, recordsProfileId } = useProfile();
+  
+  const [seconds, setSeconds] = useState(0);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [metering, setMetering] = useState<number[]>(Array(30).fill(10));
+
+  useEffect(() => {
+    startRecording();
+    return () => {
+      stopRecording();
+    };
+  }, []);
+
+  const stopRecording = async () => {
+    if (recording) {
+      try {
+        await recording.stopAndUnloadAsync();
+      } catch (e) {
+        // ignore errors on cleanup
+      }
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      await Audio.requestPermissionsAsync();
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+        (status) => {
+          if (status.isRecording) {
+            setSeconds(Math.floor(status.durationMillis / 1000));
+            if (status.metering !== undefined) {
+               const base = status.metering + 160; 
+               const normalized = Math.max(10, (base / 160) * 50);
+               setMetering(prev => {
+                  const arr = [...prev.slice(1), normalized];
+                  return arr;
+               });
+            }
+          }
+        },
+        100 
+      );
+      setRecording(newRecording);
+    } catch (err) {
+      console.error('Fallo al iniciar grabacion', err);
+      Alert.alert('Permisos requeridos', 'No se pudo acceder al micrófono');
+    }
+  };
+
+  const formatTime = (total: number) => {
+    const m = Math.floor(total / 60).toString().padStart(2, '0');
+    const s = (total % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  const handleFinish = async () => {
+    if (isFinishing) return;
+    setIsFinishing(true);
+
+    let audioUri = '';
+    if (recording) {
+      try {
+        await recording.stopAndUnloadAsync();
+        audioUri = recording.getURI() || '';
+      } catch (e) {
+        console.error('Error al detener audio:', e);
+      }
+    }
+
+    try {
+      let finalNoteData: ReturnType<typeof formatClinicalJson> = {
+        paciente: 'Paciente No Identificado',
+        transcription: '',
+        vitals: undefined,
+        rawText: ''
+      };
+
+      const profile = dashboardProfileId || recordsProfileId || '1';
+
+      if (audioUri) {
+         const formData = new FormData();
+         formData.append('audio', {
+            uri: audioUri,
+            type: 'audio/m4a',
+            name: 'consulta.m4a'
+         } as any);
+         
+         formData.append('profileId', profile);
+         formData.append('folder', folderParam);
+
+         const webhookUrl = process.env.EXPO_PUBLIC_N8N_WEBHOOK_URL || 'https://tu-n8n.com/webhook/klino-audio';
+         
+         try {
+           const res = await fetch(webhookUrl, {
+             method: 'POST',
+             body: formData,
+             headers: {
+                Accept: 'application/json',
+                // FormData generará su propio Content-Type con el boundary
+             }
+           });
+           
+           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+           
+           const data = await res.json();
+           finalNoteData = formatClinicalJson(data);
+         } catch (e) {
+           console.error("Error n8n:", e);
+           Alert.alert(
+             'Aviso de Conexión', 
+             `No se pudo contactar a n8n (${webhookUrl}). Asegúrate de configurar EXPO_PUBLIC_N8N_WEBHOOK_URL en el archivo .env.\n\nSe creará una nota de prueba.`,
+             [{ text: 'Entendido' }]
+           );
+           
+           finalNoteData = {
+              paciente: 'Paciente de Prueba (Error red)',
+              transcription: 'S: Paciente acude por chequeo...\nO: TA 128/82, FC 74, peso 81.4kg.\nA: Hipertensión en control.\nP: Losartán 50mg.',
+              vitals: { temp: '36.5', fc: '74', ta: '128/82' } as any,
+              rawText: 'Fallback local text'
+           };
+         }
+      } else {
+        Alert.alert('Error', 'No se grabó ningún audio');
+        setIsFinishing(false);
+        return;
+      }
+
+      const newNoteId = Math.random().toString(36).substring(7);
+      const profile = dashboardProfileId || recordsProfileId || '1';
+      
+      const newNote = {
+        id: newNoteId,
+        name: finalNoteData.paciente || 'Paciente (Dictado)',
+        time: Date.now(),
+        status: 'pending' as 'pending',
+        statusText: 'PENDIENTE',
+        specialty: 'Medicina General',
+        transcription: finalNoteData.transcription,
+        rawTranscription: finalNoteData.rawText,
+        vitals: finalNoteData.vitals || {}
+      };
+
+      await addNote(profile, newNote as any);
+
+      router.replace(`/note-review?id=${newNoteId}&profileId=${profile}`);
+    } catch (e) {
+      console.error(e);
+      setIsFinishing(false);
+      Alert.alert('Error', 'Hubo un problema procesando la historia clínica');
+    }
+  };
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: KLINO_COLORS.verde }}>
+      <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 40 : 16 }}>
+        
+        {/* ENCABEZADO */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <X size={24} color={KLINO_COLORS.papel} strokeWidth={1.75} />
+          </TouchableOpacity>
+          <KlinoText variant="label" color={KLINO_COLORS.papel}>HISTORIA CLÍNICA</KlinoText>
+          <View style={{ width: 12, height: 12, backgroundColor: isFinishing ? KLINO_COLORS.gris : KLINO_COLORS.ambar }} />
+        </View>
+
+        {/* PACIENTE Y TIEMPO */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <KlinoText variant="h3" color={KLINO_COLORS.papel}>Consultorio</KlinoText>
+          <KlinoText variant="h3" color={KLINO_COLORS.papel}>{formatTime(seconds)}</KlinoText>
+        </View>
+
+        {/* ONDA DE AUDIO (REAL METERING) */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 50, marginBottom: 40 }}>
+          {metering.map((h, i) => {
+            const bg = i > 25 ? KLINO_COLORS.papel : (i > 15 ? KLINO_COLORS.ambar : KLINO_COLORS.papel);
+            return <View key={i} style={{ width: 4, height: Math.max(4, h), backgroundColor: bg, borderRadius: 2 }} />
+          })}
+        </View>
+
+        <KlinoText variant="label" color={KLINO_COLORS.papel} style={{ marginBottom: 16 }}>
+          {isFinishing ? 'PROCESANDO AUDIO...' : 'ESCUCHANDO CONSULTA'}
+        </KlinoText>
+        
+        <View style={{ height: 1, backgroundColor: 'rgba(244, 241, 234, 0.2)', marginBottom: 24 }} />
+
+        {/* BLOQUES SOAP */}
+        <SoapSection status="completed" title="SUBJETIVO" content="Escuchando motivo de consulta y síntomas..." />
+        <SoapSection status="listening" title="OBJETIVO" content="Esperando signos vitales o exploración..." />
+        <SoapSection status="empty" title="ANÁLISIS" content="" />
+        <SoapSection status="empty" title="PLAN" content="" />
+
+        <View style={{ flex: 1 }} />
+
+        {/* CONTROLES INFERIORES */}
+        <View style={{ backgroundColor: KLINO_COLORS.papel, padding: 16, marginBottom: 16 }}>
+          <TouchableOpacity onPress={handleFinish} disabled={isFinishing} style={{ alignItems: 'center' }}>
+            <KlinoText variant="label" color={KLINO_COLORS.verde}>
+              {isFinishing ? "TRANSCRIBIENDO Y ARMANDO..." : "TERMINAR Y ARMAR HISTORIA CLÍNICA"}
+            </KlinoText>
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 16, marginBottom: 24 }}>
+          <TouchableOpacity style={[styles.ghostBtn, { flex: 1 }]}>
+             <KlinoText variant="label" color={KLINO_COLORS.papel}>PAUSAR</KlinoText>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.ghostBtn, { flex: 1 }]}>
+             <KlinoText variant="label" color={KLINO_COLORS.papel}>MARCAR MOMENTO</KlinoText>
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ alignItems: 'center', paddingBottom: 32 }}>
+           <KlinoText variant="small" color={'rgba(244, 241, 234, 0.6)'}>Nada se guarda sin tu aprobación.</KlinoText>
+        </View>
+
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const SoapSection = ({ status, title, content }: any) => {
+  return (
+    <View style={{ flexDirection: 'row', marginBottom: 24 }}>
+      <View style={{ marginTop: 2, marginRight: 16 }}>
+        {status === 'completed' && <View style={{ width: 16, height: 16, backgroundColor: KLINO_COLORS.papel }} />}
+        {status === 'listening' && <View style={{ width: 16, height: 16, borderWidth: 2, borderColor: KLINO_COLORS.ambar }} />}
+        {status === 'empty' && <View style={{ width: 16, height: 16, borderWidth: 2, borderColor: KLINO_COLORS.papel }} />}
+      </View>
+      <View style={{ flex: 1 }}>
+        <KlinoText variant="label" color={KLINO_COLORS.papel} style={{ marginBottom: 4 }}>{title}</KlinoText>
+        <KlinoText variant="body" color={status === 'empty' ? 'rgba(244, 241, 234, 0.6)' : KLINO_COLORS.papel}>{content}</KlinoText>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  ghostBtn: {
+    borderWidth: 1,
+    borderColor: 'rgba(244, 241, 234, 0.4)',
+    paddingVertical: 16,
+    alignItems: 'center'
+  }
+});

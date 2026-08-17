@@ -10,7 +10,7 @@ class BluetoothService {
     // Lazy initialization
   }
 
-  private getManager(): BleManager {
+  public getManager(): BleManager {
     if (!this.manager) {
       this.manager = new BleManager();
     }
@@ -126,17 +126,13 @@ class BluetoothService {
               title: "Dato IoT Recibido",
               body: "El hardware Klino ha enviado nuevos datos médicos.",
               sound: true,
-              priority: Notifications.AndroidPriority.HIGH,
+              priority: Notifications.AndroidNotificationPriority.HIGH,
             },
             trigger: null,
           });
         }
       }
     );
-  }
-
-  getManager() {
-    return this.manager;
   }
 }
 
