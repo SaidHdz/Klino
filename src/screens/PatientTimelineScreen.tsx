@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, SafeAreaView, TouchableOpacity, ScrollView, Platform, StyleSheet, TextInput } from 'react-native';
+import { View, SafeAreaView, TouchableOpacity, ScrollView, Platform, StyleSheet, TextInput, BackHandler } from 'react-native';
 import { ArrowLeft, Search, AlertTriangle, ChevronDown, Mic, Pencil, Lock } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { KLINO_COLORS } from '../constants/theme';
 import { KlinoText } from '../components/common/KlinoText';
 import { useProfile } from '../context/ProfileContext';
+import { DictationTypeModal } from '../components/dictation/DictationTypeModal';
 
 import { FadingScrollContainer } from '../components/common/FadingScrollContainer';
 
@@ -19,14 +20,29 @@ export default function PatientTimelineScreen() {
   
   const { notes, recordsProfileId, updatePatientName } = useProfile();
   const [currentName, setCurrentName] = useState(initialPatientName);
+  const [dictationModalVisible, setDictationModalVisible] = useState(false);
   
   // Obtener todas las notas del paciente seleccionado
   const currentNotes = (recordsProfileId && recordsProfileId !== 'all') 
     ? (notes[recordsProfileId] || []).map(n => ({ ...n, profileId: recordsProfileId })) 
-    : Object.entries(notes).flatMap(([pId, pNotes]) => pNotes.map(n => ({ ...n, profileId: pId })));
+    : Object.entries(notes || {}).flatMap(([pId, pNotes]) => (pNotes || []).map((n: any) => ({ ...n, profileId: pId })));
     
-  const patientNotes = currentNotes
-    .filter(n => n.name === currentName)
+  const rawPatientNotes = currentNotes.filter(n => n.name === currentName);
+  const patientNotesMap = new Map();
+  const transcriptionsSet = new Set();
+
+  rawPatientNotes.forEach(n => {
+    const textContent = (n.transcription || n.rawTranscription || '').trim();
+    const isDuplicateText = textContent.length > 10 && transcriptionsSet.has(textContent);
+    
+    if (!patientNotesMap.has(n.id) && !isDuplicateText) {
+      patientNotesMap.set(n.id, n);
+      if (textContent.length > 10) {
+        transcriptionsSet.add(textContent);
+      }
+    }
+  });
+  const patientNotes = Array.from(patientNotesMap.values())
     .sort((a, b) => Number(b.time) - Number(a.time));
 
   const [activeTab, setActiveTab] = useState<TabType>('Resumen');
@@ -52,13 +68,23 @@ export default function PatientTimelineScreen() {
     }
   };
 
+  const navigateBackToRecords = () => {
+    router.replace('/(tabs)/records');
+    return true; // prevent default behavior
+  };
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', navigateBackToRecords);
+    return () => backHandler.remove();
+  }, []);
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: KLINO_COLORS.papel }}>
       
       {/* HEADER */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 40 : 16, paddingBottom: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/records')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginRight: 16 }}>
+          <TouchableOpacity onPress={navigateBackToRecords} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginRight: 16 }}>
             <ArrowLeft size={24} color={KLINO_COLORS.tinta} strokeWidth={1.75} />
           </TouchableOpacity>
           <KlinoText variant="h3" style={{ fontSize: 18 }}>Expediente</KlinoText>
@@ -117,23 +143,68 @@ export default function PatientTimelineScreen() {
         </FadingScrollContainer>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-        {activeTab === 'Resumen' && <ResumenTab router={router} notes={patientNotes} patientName={currentName} />}
+      <ScrollView contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={false}>
+        {activeTab === 'Resumen' && <ResumenTab router={router} notes={patientNotes} patientName={currentName} onDictarPress={() => setDictationModalVisible(true)} />}
         {activeTab === 'Historia clínica' && <HistoriaClinicaTab notes={patientNotes} />}
-        {activeTab === 'Notas de evolución' && <NotasEvolucionTab notes={patientNotes} router={router} patientName={currentName} />}
+        {activeTab === 'Notas de evolución' && <NotasEvolucionTab notes={patientNotes} router={router} patientName={currentName} onDictarPress={() => setDictationModalVisible(true)} />}
         {activeTab === 'Labs e imagen' && <LabsImagenTab />}
-        {activeTab === 'Indicaciones' && <IndicacionesTab />}
+        {activeTab === 'Indicaciones' && <IndicacionesTab notes={patientNotes} router={router} patientName={currentName} onDictarPress={() => setDictationModalVisible(true)} />}
         {activeTab === 'Referencia' && <ReferenciaTab />}
-        {activeTab === 'Recetas' && <RecetasTab notes={patientNotes} router={router} patientName={currentName} />}
+        {activeTab === 'Recetas' && <RecetasTab notes={patientNotes} router={router} patientName={currentName} onDictarPress={() => setDictationModalVisible(true)} />}
       </ScrollView>
 
+      <DictationTypeModal 
+        visible={dictationModalVisible} 
+        onClose={() => setDictationModalVisible(false)}
+        patientName={currentName}
+      />
     </SafeAreaView>
   );
 }
 
-const ResumenTab = ({ router, notes, patientName }: any) => {
-  const latestNote = notes && notes.length > 0 ? notes[0] : null;
-  const vitals = latestNote?.vitals || {};
+const ResumenTab = ({ router, notes, patientName, onDictarPress }: any) => {
+  const getLatestVital = (key: string) => {
+    for (const note of notes || []) {
+      if (note.vitals && (note.vitals as any)[key]) {
+        return (note.vitals as any)[key];
+      }
+    }
+    return null;
+  };
+
+  const vitals = {
+    ta: getLatestVital('ta'),
+    fc: getLatestVital('fc'),
+    peso: getLatestVital('peso'),
+    imc: getLatestVital('imc'),
+    temp: getLatestVital('temp'),
+  };
+
+  // Diagnósticos
+  const allDiagnoses = (notes || []).map((n: any) => {
+    if (n.clinicalData?.impresion_diagnostica) return n.clinicalData.impresion_diagnostica;
+    const match = n.transcription?.match(/(?:ANÁLISIS|ANALISIS|DIAGNÓSTICO|DIAGNOSTICO|IMPRESIÓN DIAGNÓSTICA|IMPRESION DIAGNOSTICA)[^:]*:\s*([\s\S]+?)(?=\n\n|\*\*P|\*\* PLAN|\*\*P |\*\* P|P \(PLAN|PLAN|$)/i);
+    if (match) {
+      // Remove any trailing markdown formatting that might get caught
+      return match[1].replace(/\*\*/g, '').trim();
+    }
+    return null;
+  }).filter(Boolean);
+  const uniqueDiagnoses = Array.from(new Set(allDiagnoses)).slice(0, 3);
+
+  // Tratamiento actual
+  let latestTreatment = null;
+  for (const n of notes || []) {
+    if (n.clinicalData?.plan) {
+      latestTreatment = n.clinicalData.plan;
+      break;
+    }
+    const match = n.transcription?.match(/PLAN(?: TERAPÉUTICO)?:\s*([\s\S]+?)(?=\*\*|$)/i);
+    if (match) {
+      latestTreatment = match[1].trim();
+      break;
+    }
+  }
 
   return (
     <View style={{ padding: 24 }}>
@@ -145,8 +216,31 @@ const ResumenTab = ({ router, notes, patientName }: any) => {
         <GridCell label="TEMP." value={vitals.temp || '--'} sub="°C" isBottom />
       </View>
 
-      {/* DIAGNÓSTICOS ACTIVOS */}
-      <SectionTitle title="DIAGNÓSTICOS Y NOTAS" />
+      {/* DIAGNÓSTICOS HISTÓRICOS */}
+      <SectionTitle title="DIAGNÓSTICOS" />
+      <View style={{ marginBottom: 32, paddingBottom: 16, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderHairline }}>
+        {uniqueDiagnoses.length > 0 ? (
+          uniqueDiagnoses.map((diag: any, idx: number) => (
+            <View key={idx} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: KLINO_COLORS.verde, marginTop: 8, marginRight: 12 }} />
+              <KlinoText variant="body" style={{ flex: 1, fontSize: 17, lineHeight: 24 }}>{diag}</KlinoText>
+            </View>
+          ))
+        ) : (
+          <KlinoText variant="small" color={KLINO_COLORS.gris}>No hay diagnósticos registrados.</KlinoText>
+        )}
+      </View>
+
+      {/* TRATAMIENTO ACTUAL */}
+      <SectionTitle title="TRATAMIENTO ACTUAL" />
+      <View style={{ marginBottom: 32, padding: 16, backgroundColor: KLINO_COLORS.papelHondo, borderRadius: 8 }}>
+        <KlinoText variant="body" style={{ fontSize: 16, lineHeight: 24 }}>
+          {latestTreatment || 'No hay tratamientos recientes registrados.'}
+        </KlinoText>
+      </View>
+
+      {/* ÚLTIMAS NOTAS */}
+      <SectionTitle title="ÚLTIMAS NOTAS" />
       <View style={{ borderBottomWidth: 1, borderColor: KLINO_COLORS.borderHairline, marginBottom: 32 }}>
         {notes?.slice(0,3).map((n: any, idx: number) => (
           <TouchableOpacity key={n.id || idx} onPress={() => router.push(`/note-review?id=${n.id}&profileId=${n.profileId || '1'}`)}>
@@ -164,7 +258,7 @@ const ResumenTab = ({ router, notes, patientName }: any) => {
       {/* BOTONES INFERIORES */}
       <View style={{ flexDirection: 'row', gap: 16 }}>
         <TouchableOpacity 
-          onPress={() => router.push(`/live-consultation?patientName=${encodeURIComponent(patientName)}`)}
+          onPress={() => onDictarPress()}
           style={{ flex: 1, backgroundColor: KLINO_COLORS.verde, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
         >
           <Mic size={20} color={KLINO_COLORS.papel} strokeWidth={2} />
@@ -246,11 +340,11 @@ const HistoriaClinicaTab = ({ notes }: any) => {
   );
 };
 
-const NotasEvolucionTab = ({ notes, router, patientName }: any) => (
+const NotasEvolucionTab = ({ notes, router, patientName, onDictarPress }: any) => (
   <View>
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
       <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>{notes?.length || 0} NOTAS DE EVOLUCIÓN</KlinoText>
-      <TouchableOpacity onPress={() => router.push(`/live-consultation?patientName=${encodeURIComponent(patientName)}`)}>
+      <TouchableOpacity onPress={() => onDictarPress()}>
         <KlinoText variant="label" color={KLINO_COLORS.verde} style={{ fontWeight: 'bold', letterSpacing: 1 }}>DICTAR</KlinoText>
       </TouchableOpacity>
     </View>
@@ -311,20 +405,48 @@ const Bar = ({ value, height, active }: any) => (
   </View>
 );
 
-const IndicacionesTab = () => (
-  <View>
-    <View style={{ padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
-      <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>HOJAS DE INDICACIONES</KlinoText>
+const IndicacionesTab = ({ notes, router, patientName, onDictarPress }: any) => {
+  const indicaciones = notes?.filter((n: any) => n.transcription && n.transcription.toUpperCase().includes('PLAN:'))
+    .map((n: any) => {
+      const parts = n.transcription.split(/PLAN:|plan:/i);
+      const planText = parts.length > 1 ? parts[1].trim() : '';
+      return {
+        id: n.id,
+        time: n.time,
+        profileId: n.profileId,
+        desc: planText.substring(0, 120) + (planText.length > 120 ? '...' : '')
+      };
+    }) || [];
+
+  return (
+    <View>
+      <View style={{ padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>HOJAS DE INDICACIONES</KlinoText>
+        <TouchableOpacity onPress={() => onDictarPress()}>
+          <KlinoText variant="label" color={KLINO_COLORS.verde} style={{ fontWeight: 'bold', letterSpacing: 1 }}>DICTAR</KlinoText>
+        </TouchableOpacity>
+      </View>
+      
+      {indicaciones.map((ind: any) => (
+        <TouchableOpacity key={ind.id} onPress={() => router.push(`/note-review?id=${ind.id}&profileId=${ind.profileId || '1'}`)}>
+          <RecordItem date={new Date(Number(ind.time)).toLocaleDateString('es-MX', { day: '2-digit', month: 'long' })} status="OK" desc={ind.desc} />
+        </TouchableOpacity>
+      ))}
+
+      {indicaciones.length === 0 && (
+        <View style={{ padding: 24 }}>
+          <KlinoText variant="body" color={KLINO_COLORS.gris}>No hay hojas de indicaciones recientes.</KlinoText>
+        </View>
+      )}
+
+      <View style={{ padding: 24 }}>
+        <KlinoText variant="small" color={KLINO_COLORS.gris} style={{ lineHeight: 22 }}>
+          Las hojas de indicaciones se generan de lo que dictaste en el plan y se pueden mandar al paciente.
+        </KlinoText>
+      </View>
     </View>
-    <RecordItem date="Cuidados en casa · 14 ago" status="OK" desc="Medir presión dos veces al día. Dieta baja en sodio. Caminar 30 minutos." />
-    <RecordItem date="Preparación de laboratorio · 10 abr" status="OK" desc="Ayuno de 8 horas. Suspender metformina la noche previa." />
-    <View style={{ padding: 24 }}>
-      <KlinoText variant="small" color={KLINO_COLORS.gris} style={{ lineHeight: 22 }}>
-        Las hojas de indicaciones se generan de lo que dictaste en el plan y se pueden mandar al paciente.
-      </KlinoText>
-    </View>
-  </View>
-);
+  );
+};
 
 const ReferenciaTab = () => (
   <View>
@@ -336,7 +458,7 @@ const ReferenciaTab = () => (
   </View>
 );
 
-const RecetasTab = ({ notes, router, patientName }: any) => {
+const RecetasTab = ({ notes, router, patientName, onDictarPress }: any) => {
   // Extract "PLAN" sections from notes
   const recetas = notes?.filter((n: any) => n.transcription && n.transcription.toUpperCase().includes('PLAN:'))
     .map((n: any) => {
@@ -354,7 +476,7 @@ const RecetasTab = ({ notes, router, patientName }: any) => {
     <View>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
         <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>RECETAS</KlinoText>
-        <TouchableOpacity onPress={() => router.push(`/live-consultation?patientName=${encodeURIComponent(patientName)}`)}>
+        <TouchableOpacity onPress={() => onDictarPress()}>
           <KlinoText variant="label" color={KLINO_COLORS.verde} style={{ fontWeight: 'bold', letterSpacing: 1 }}>DICTAR</KlinoText>
         </TouchableOpacity>
       </View>

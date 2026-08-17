@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, ScrollView, TouchableOpacity, SafeAreaView, Platform, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChevronRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
@@ -10,7 +11,7 @@ import { useProfile } from '../context/ProfileContext';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { doctorName, logout, appSettings, updateSettings } = useProfile();
+  const { doctorName, logout, appSettings, updateSettings, notes } = useProfile();
 
   const handleLogout = () => {
     Alert.alert(
@@ -23,8 +24,7 @@ export default function ProfileScreen() {
           style: "destructive", 
           onPress: async () => {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            await logout();
-            router.replace('/');
+            router.replace('/closing-session');
           } 
         }
       ]
@@ -35,9 +35,16 @@ export default function ProfileScreen() {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'DR';
   };
 
+  // Calcular estadísticas reales
+  const totalNotes = Object.values(notes || {}).reduce((acc, curr) => acc + (curr?.length || 0), 0);
+  const minutesSaved = totalNotes * 5; // Estimado de 5 min ahorrados por nota
+  const hoursSaved = Math.floor(minutesSaved / 60);
+  const remainingMinutes = minutesSaved % 60;
+  const timeSavedString = hoursSaved > 0 ? `${hoursSaved} h ${remainingMinutes} m` : `${remainingMinutes} m`;
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: KLINO_COLORS.papel }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 60 : 32, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 60 : 32, paddingBottom: 16 }} showsVerticalScrollIndicator={false}>
         
         {/* TITULAR */}
         <View style={{ marginBottom: 24 }}>
@@ -66,8 +73,8 @@ export default function ProfileScreen() {
             <KlinoText variant="label" color={KLINO_COLORS.papelHondo} style={{ letterSpacing: 2 }}>ESTA SEMANA</KlinoText>
             <ChevronRight size={20} color={KLINO_COLORS.papelHondo} strokeWidth={1.75} />
           </View>
-          <KlinoText variant="h1" color={KLINO_COLORS.papel} style={{ fontSize: 48, marginBottom: 8 }}>6 h 40 m</KlinoText>
-          <KlinoText variant="body" color={KLINO_COLORS.papelHondo} style={{ lineHeight: 24 }}>que no pasaste escribiendo. 74 documentos dictados.</KlinoText>
+          <KlinoText variant="h1" color={KLINO_COLORS.papel} style={{ fontSize: 48, marginBottom: 8 }}>{timeSavedString}</KlinoText>
+          <KlinoText variant="body" color={KLINO_COLORS.papelHondo} style={{ lineHeight: 24 }}>que no pasaste escribiendo. {totalNotes} documentos dictados.</KlinoText>
         </TouchableOpacity>
 
         {/* ACCESO AL DICTADO */}
@@ -104,9 +111,9 @@ export default function ProfileScreen() {
           <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 16 }}>CONSULTORIO</KlinoText>
           <View style={{ borderTopWidth: 1, borderColor: KLINO_COLORS.borderHairline }}>
             <MenuItem title="Modos y formatos" subtitle="Consultorio y Hospital · 4 formatos" onPress={() => router.push('/formats')} />
-            <MenuItem title="Avisos y recordatorios" subtitle="Pendientes, citas y resumen semanal" onPress={() => router.push('/notifications')} />
+            <MenuItem title="Avisos y recordatorios" subtitle="Pendientes, citas y resumen semanal" onPress={() => router.push('/notification-settings')} />
             <MenuItem title="Suscripción" subtitle="Mensual · siguiente cargo el 1 de septiembre" onPress={() => router.push('/subscription')} />
-            <MenuItem title="Seguridad" subtitle="Huella, NIP y dispositivos" />
+            <MenuItem title="Seguridad" subtitle="Huella, NIP y dispositivos" onPress={() => router.push('/security')} />
           </View>
         </View>
 

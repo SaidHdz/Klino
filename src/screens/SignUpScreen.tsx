@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, SafeAreaView, Platform, Alert, Image, StatusBar } from 'react-native';
+import { View, TouchableOpacity, SafeAreaView, Platform, Alert, Image, StatusBar, KeyboardAvoidingView, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '../utils/supabase';
 import { KLINO_COLORS } from '../constants/theme';
 import { KlinoText } from '../components/common/KlinoText';
 import { KlinoButton } from '../components/common/KlinoButton';
+import { KlinoInput } from '../components/common/KlinoInput';
 import Toast from 'react-native-toast-message';
 
 export default function SignUpScreen() {
@@ -13,10 +14,12 @@ export default function SignUpScreen() {
   const [step, setStep] = useState(1);
   const [selectedMode, setSelectedMode] = useState('Medicina general');
   const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   const handleNext = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (step < 3) {
+    if (step < 4) {
       setStep(step + 1);
     } else {
       await handleFinish();
@@ -25,19 +28,19 @@ export default function SignUpScreen() {
 
   const handleSkip = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await handleFinish();
+    setStep(4);
   };
 
   const handleFinish = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Por favor ingresa un correo y contraseña");
+      return;
+    }
     setIsLoading(true);
     try {
-      // Mock signup since we removed the form for onboarding flow
-      const randomId = Math.random().toString(36).substring(7);
-      const fakeEmail = `nuevo_${randomId}@klino.med`;
-      
       const { data, error } = await supabase.auth.signUp({
-        email: fakeEmail,
-        password: 'password123',
+        email: email,
+        password: password,
       });
 
       if (error) throw error;
@@ -46,7 +49,7 @@ export default function SignUpScreen() {
         await supabase.from('doctors').insert({
           id: data.user.id,
           full_name: 'Dr. Nuevo', 
-          email: fakeEmail,
+          email: email,
           whatsapp_number: `pending_${data.user.id.substring(0,8)}`, 
           pin_hash: '0000', 
           specialty: selectedMode,
@@ -58,8 +61,7 @@ export default function SignUpScreen() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace('/(tabs)');
     } catch (error: any) {
-      // Si falla supabase, igual entramos en modo offline
-      router.replace('/(tabs)');
+      Alert.alert("Error", error.message);
     } finally {
       setIsLoading(false);
     }
@@ -70,7 +72,8 @@ export default function SignUpScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: KLINO_COLORS.verde }}>
       <StatusBar barStyle="light-content" />
-      <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 60 : 20, paddingBottom: 32 }}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 60 : 20, paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
         
         {/* HEADER */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 64 }}>
@@ -86,7 +89,7 @@ export default function SignUpScreen() {
 
         {/* PROGRESS */}
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 24 }}>
-          {[1, 2, 3].map((i) => (
+          {[1, 2, 3, 4].map((i) => (
             <View 
               key={i} 
               style={{ 
@@ -99,7 +102,7 @@ export default function SignUpScreen() {
         </View>
 
         <KlinoText variant="label" color={KLINO_COLORS.papel} style={{ marginBottom: 16 }}>
-          PASO {step} DE 3
+          PASO {step} DE 4
         </KlinoText>
 
         <View style={{ flex: 1 }}>
@@ -163,6 +166,33 @@ export default function SignUpScreen() {
               </View>
             </View>
           )}
+
+          {step === 4 && (
+            <View>
+              <KlinoText variant="h1" color={KLINO_COLORS.papel} style={{ marginBottom: 16, fontSize: 36, lineHeight: 40 }}>
+                Crea tu cuenta
+              </KlinoText>
+              <KlinoText variant="body" color={KLINO_COLORS.papel} style={{ opacity: 0.9, fontSize: 18, lineHeight: 24, marginBottom: 32 }}>
+                Ingresa tu correo y contraseña para empezar a usar Klino.
+              </KlinoText>
+              
+              <KlinoInput 
+                placeholder="ejemplo@correo.com"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                style={{ backgroundColor: 'rgba(255,255,255,0.9)', color: KLINO_COLORS.tinta }}
+              />
+              <KlinoInput 
+                placeholder="Contraseña"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={true}
+                style={{ backgroundColor: 'rgba(255,255,255,0.9)', color: KLINO_COLORS.tinta }}
+              />
+            </View>
+          )}
         </View>
 
         {/* FOOTER ACTION */}
@@ -180,7 +210,7 @@ export default function SignUpScreen() {
             }}
           >
             <KlinoText variant="label" color={KLINO_COLORS.verde}>
-              {isLoading ? 'CARGANDO...' : step === 1 ? 'EMPEZAR' : step === 2 ? 'ENTENDIDO' : 'ENTRAR A KLINO'}
+              {isLoading ? 'CARGANDO...' : step === 1 ? 'EMPEZAR' : step === 2 ? 'ENTENDIDO' : step === 3 ? 'SIGUIENTE' : 'CREAR CUENTA'}
             </KlinoText>
           </TouchableOpacity>
           <KlinoText variant="small" color={KLINO_COLORS.papel} style={{ textAlign: 'center', opacity: 0.8 }}>
@@ -188,7 +218,8 @@ export default function SignUpScreen() {
           </KlinoText>
         </View>
 
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

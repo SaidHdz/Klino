@@ -1,16 +1,16 @@
 {
   "expo": {
     "name": "Klino",
-    "slug": "Klino",
+    "slug": "SOMA",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/klino-brand-kit/logo/symbol/symbol-verde.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/klino-brand-kit/logo/symbol/symbol-micro-verde.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#F4F1EA"
     },
     "ios": {
       "supportsTablet": true,
@@ -25,8 +25,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/klino-brand-kit/logo/symbol/symbol-micro-verde.png",
+        "backgroundColor": "#F4F1EA"
       },
       "package": "com.snupi.klino",
       "permissions": [
@@ -35,7 +35,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/klino-brand-kit/logo/symbol/symbol-verde.png"
     },
     "extra": {
       "eas": {

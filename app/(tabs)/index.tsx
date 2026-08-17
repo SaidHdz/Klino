@@ -10,7 +10,7 @@ import { useProfile } from '../../src/context/ProfileContext';
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { doctorName, notes } = useProfile();
+  const { doctorName, notes, notificationsList } = useProfile();
   
   // Extraer el primer nombre para el saludo
   const firstName = doctorName ? doctorName.split(' ')[0] : 'Dr/Dra';
@@ -21,8 +21,8 @@ export default function DashboardScreen() {
   }
 
   // Extraer todas las notas pendientes guardando su respectivo profileId
-  const allNotes = Object.entries(notes).flatMap(([pId, pNotes]) => 
-    pNotes.map(n => ({ ...n, profileId: pId }))
+  const allNotes = Object.entries(notes || {}).flatMap(([pId, pNotes]) => 
+    (pNotes || []).map((n: any) => ({ ...n, profileId: pId }))
   );
   const pendingNotes = allNotes.filter(n => n.status === 'pending').sort((a, b) => Number(b.time) - Number(a.time));
 
@@ -51,7 +51,7 @@ export default function DashboardScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 40 : 16, paddingBottom: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Image 
-            source={require('../../assets/klino-brand-kit/logo/symbol/symbol-verde.png')} 
+            source={require('../../assets/klino-brand-kit/logo/symbol/symbol-micro-verde.png')} 
             style={{ width: 24, height: 24, marginRight: 8 }} 
             resizeMode="contain"
           />
@@ -67,12 +67,12 @@ export default function DashboardScreen() {
             onPress={() => router.push('/notifications')}
           >
             <Bell size={24} color={KLINO_COLORS.tinta} strokeWidth={1.75} />
-            {pendingNotes.length > 0 && <KlinoBadge dotOnly variant="amber" style={{ position: 'absolute', top: -2, right: -2 }} />}
+            {notificationsList.some((n: any) => n.unread) && <KlinoBadge dotOnly variant="amber" style={{ position: 'absolute', top: -2, right: -2 }} />}
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
         
         {/* ESCANEAR DOCUMENTO */}
         <TouchableOpacity 
@@ -125,28 +125,69 @@ export default function DashboardScreen() {
         </View>
 
         {/* AGENDA */}
-        <View>
-          <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 12 }}>SIGUE EN TU AGENDA</KlinoText>
-          <TouchableOpacity 
-            activeOpacity={0.8}
-            onPress={() => router.push('/(tabs)/agenda')}
-            style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}
-          >
-            <View style={{ marginRight: 16 }}>
-              <KlinoText variant="h3" color={KLINO_COLORS.verde}>16:30</KlinoText>
-            </View>
-            <View style={{ flex: 1 }}>
-              <KlinoText variant="body" style={{ fontWeight: 'bold' }}>Ramiro Cepeda</KlinoText>
-              <KlinoText variant="small" color={KLINO_COLORS.gris}>Seguimiento · confirmada</KlinoText>
-            </View>
-            <ChevronRight size={20} color={KLINO_COLORS.gris} strokeWidth={1.75} />
-          </TouchableOpacity>
-        </View>
+        <NextAppointmentCard router={router} />
 
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const NextAppointmentCard = ({ router }: any) => {
+  const [nextApp, setNextApp] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const fetchNextApp = async () => {
+      try {
+        const data = await import('@react-native-async-storage/async-storage').then(m => m.default.getItem('@Klino_Appointments'));
+        if (data) {
+          const apps = JSON.parse(data);
+          const dateStr = `${new Date().getFullYear()}-${new Date().getMonth()}-${new Date().getDate()}`;
+          const todayApps = apps.filter((a: any) => a.dateStr === dateStr && a.status !== 'atendida' && a.status !== 'pendiente_aprobacion');
+          if (todayApps.length > 0) {
+            // Asumimos que están ordenadas o tomamos la primera
+            const sorted = todayApps.sort((a: any, b: any) => a.time.localeCompare(b.time));
+            // Buscar la próxima cita después de la hora actual
+            const nowTime = `${new Date().getHours().toString().padStart(2, '0')}:${new Date().getMinutes().toString().padStart(2, '0')}`;
+            const next = sorted.find((a: any) => a.time >= nowTime) || sorted[0];
+            setNextApp(next);
+          }
+        }
+      } catch (e) {}
+    };
+    fetchNextApp();
+  }, []);
+
+  if (!nextApp) {
+    return (
+      <View>
+        <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 12 }}>SIGUE EN TU AGENDA</KlinoText>
+        <View style={{ padding: 24, borderTopWidth: 1, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong, alignItems: 'center' }}>
+          <KlinoText variant="body" color={KLINO_COLORS.gris}>No hay más citas para el día de hoy.</KlinoText>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View>
+      <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 12 }}>SIGUE EN TU AGENDA</KlinoText>
+      <TouchableOpacity 
+        activeOpacity={0.8}
+        onPress={() => router.push('/(tabs)/agenda')}
+        style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}
+      >
+        <View style={{ marginRight: 16 }}>
+          <KlinoText variant="h3" color={KLINO_COLORS.verde}>{nextApp.time}</KlinoText>
+        </View>
+        <View style={{ flex: 1 }}>
+          <KlinoText variant="body" style={{ fontWeight: 'bold' }}>{nextApp.patientName}</KlinoText>
+          <KlinoText variant="small" color={KLINO_COLORS.gris}>{nextApp.type} · {nextApp.status === 'confirmada' ? 'confirmada' : 'sin confirmar'}</KlinoText>
+        </View>
+        <ChevronRight size={20} color={KLINO_COLORS.gris} strokeWidth={1.75} />
+      </TouchableOpacity>
+    </View>
+  );
+};
 
 const PendingItem = ({ name, type, time, isLast = false, onPress }: any) => (
   <TouchableOpacity 

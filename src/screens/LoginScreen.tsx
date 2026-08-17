@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { View, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, Alert, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, TouchableOpacity, SafeAreaView, KeyboardAvoidingView, Platform, Alert, Image, Keyboard } from 'react-native';
 import { Fingerprint } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import * as LocalAuthentication from 'expo-local-authentication';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../utils/supabase';
 import { KLINO_COLORS } from '../constants/theme';
 import { KlinoText } from '../components/common/KlinoText';
@@ -16,6 +17,27 @@ const LoginScreen = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, []);
 
   const handleAuthenticate = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -35,15 +57,13 @@ const LoginScreen = () => {
       });
 
       if (error) {
-        if (__DEV__ && ((email === 'test' && password === 'test1234') || (email === 'Klino-DR-2024' && password === 'admin'))) {
-           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-           router.replace('/(tabs)');
-           return;
-        }
         throw error;
       }
 
+      await AsyncStorage.setItem('@Klino_LastLogin', JSON.stringify({ email: fullEmail, password: password }));
+
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (router.canDismiss()) { router.dismissAll(); }
       router.replace('/(tabs)');
     } catch (error: any) {
       Alert.alert("Error", error.message || "Credenciales inválidas.");
@@ -63,6 +83,11 @@ const LoginScreen = () => {
       return Alert.alert('Seguridad', 'No tienes datos biométricos registrados.');
     }
 
+    const lastLoginStr = await AsyncStorage.getItem('@Klino_LastLogin');
+    if (!lastLoginStr) {
+      return Alert.alert('Sin registros', 'Debes iniciar sesión con contraseña al menos una vez para usar tu huella.');
+    }
+
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage: 'Autenticación Klino',
       fallbackLabel: 'Usar contraseña',
@@ -71,8 +96,24 @@ const LoginScreen = () => {
     });
 
     if (result.success) {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      router.replace('/(tabs)');
+      const lastLogin = JSON.parse(lastLoginStr);
+      setIsLoading(true);
+      try {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: lastLogin.email,
+          password: lastLogin.password,
+        });
+
+        if (error) throw error;
+
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (router.canDismiss()) { router.dismissAll(); }
+        router.replace('/(tabs)');
+      } catch (err: any) {
+        Alert.alert('Error', 'No se pudo iniciar sesión con los datos guardados. Ingresa tu contraseña.');
+      } finally {
+        setIsLoading(false);
+      }
     } else {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     }
@@ -168,11 +209,13 @@ const LoginScreen = () => {
 
         </View>
 
-        <View style={{ paddingBottom: 32, alignItems: 'center' }}>
-          <KlinoText variant="label" color={KLINO_COLORS.gris}>
-            EXPEDIENTE CIFRADO · NOM-004-SSA3-2012
-          </KlinoText>
-        </View>
+        {!isKeyboardVisible && (
+          <View style={{ paddingBottom: 32, alignItems: 'center' }}>
+            <KlinoText variant="label" color={KLINO_COLORS.gris}>
+              EXPEDIENTE CIFRADO · NOM-004-SSA3-2012
+            </KlinoText>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

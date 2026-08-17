@@ -148,13 +148,19 @@ function RootLayoutNav() {
         <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="edit-profile" />
-        <Stack.Screen name="modes-settings" />
+        <Stack.Screen name="formats" />
         <Stack.Screen name="notifications" />
+        <Stack.Screen name="notification-settings" />
         <Stack.Screen name="security" />
-        <Stack.Screen name="note-detail" />
         <Stack.Screen name="note-review" />
         <Stack.Screen name="live-consultation" />
-        <Stack.Screen name="patient-timeline" />
+        <Stack.Screen name="signup" />
+        <Stack.Screen name="subscription" />
+        <Stack.Screen name="scanner-assign" />
+        <Stack.Screen name="scanner-camera" />
+        <Stack.Screen name="scanner-select" />
+        <Stack.Screen name="modal" />
+        <Stack.Screen name="closing-session" />
       </Stack>
     </ThemeProvider>
   );

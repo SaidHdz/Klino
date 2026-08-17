@@ -9,10 +9,20 @@ import { useRouter } from 'expo-router';
 interface Props {
   visible: boolean;
   onClose: () => void;
+  patientName?: string;
 }
 
-export const DictationTypeModal: React.FC<Props> = ({ visible, onClose }) => {
+export const DictationTypeModal: React.FC<Props> = ({ visible, onClose, patientName }) => {
   const router = useRouter();
+
+  const handleSelect = (folder: string) => {
+    onClose();
+    if (patientName) {
+      router.push({ pathname: '/live-consultation', params: { folder, patientName } });
+    } else {
+      router.push({ pathname: '/live-consultation', params: { folder } });
+    }
+  };
 
   return (
     <Modal
@@ -40,25 +50,25 @@ export const DictationTypeModal: React.FC<Props> = ({ visible, onClose }) => {
                   icon={<FileText size={20} color={KLINO_COLORS.verde} strokeWidth={1.75} />}
                   title="Historia clínica"
                   description="Primera vez o expediente completo. Interrogatorio, antecedentes y exploración."
-                  onPress={() => { onClose(); router.push({ pathname: '/live-consultation', params: { folder: 'consulta_general' } }); }}
+                  onPress={() => handleSelect('consulta_general')}
                 />
                 <DictationOption 
                   icon={<ClipboardList size={20} color={KLINO_COLORS.verde} strokeWidth={1.75} />}
                   title="Nota rápida / Evolución"
                   description="Seguimiento continuo o nota rápida sobre un expediente existente."
-                  onPress={() => { onClose(); router.push({ pathname: '/live-consultation', params: { folder: 'nota_rapida' } }); }}
+                  onPress={() => handleSelect('nota_rapida')}
                 />
                 <DictationOption 
                   icon={<Pill size={20} color={KLINO_COLORS.verde} strokeWidth={1.75} />}
                   title="Modo Pediatría"
                   description="Ajustado para pacientes pediátricos, desarrollo y dosis ponderal."
-                  onPress={() => { onClose(); router.push({ pathname: '/live-consultation', params: { folder: 'modo_pediatria' } }); }}
+                  onPress={() => handleSelect('modo_pediatria')}
                 />
                 <DictationOption 
                   icon={<Brain size={20} color={KLINO_COLORS.verde} strokeWidth={1.75} />}
                   title="Salud Mental / Psicología"
                   description="Examen del estado mental, red de apoyo e hipótesis diagnóstica."
-                  onPress={() => { onClose(); router.push({ pathname: '/live-consultation', params: { folder: 'modo_psicologia' } }); }}
+                  onPress={() => handleSelect('modo_psicologia')}
                 />
               </View>
             </View>

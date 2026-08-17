@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { supabase } from '../utils/supabase';
+import * as Updates from 'expo-updates';
 import { formatClinicalJson } from '../utils/formatClinicalJson';
 
 type ProfileType = 'General' | 'Especialista';
@@ -218,68 +219,7 @@ interface ProfileContextType {
 
 const STORAGE_KEY = '@Klino_USER_PROFILE';
 
-const INITIAL_NOTES: Record<string, ClinicalNote[]> = {
-  '1': [
-    {
-      id: 'mock-said-1',
-      name: 'Said Hernandez',
-      specialty: 'Medicina General',
-      status: 'pending',
-      statusText: 'PENDIENTE',
-      time: Date.now(),
-      specialtyColor: '#1B4F9B',
-      vitals: {
-        ta: '120/80',
-        fc: '75',
-        fr: '16',
-        temp: '36.5',
-        sat: '98%',
-        peso: '80',
-        talla: '1.78',
-        imc: '25.2'
-      },
-      transcription: "**ANTECEDENTES PERSONALES PATOLÓGICOS:**\nNiega enfermedades crónico degenerativas previas. Sin alergias conocidas. Traumatismos negados.\n\n**PADECIMIENTO ACTUAL:**\nPaciente masculino que acude por presentar cefalea de intensidad moderada a severa (7/10) de 3 días de evolución, localizada en región occipital, que cede parcialmente con analgésicos comunes.\n\n**EXPLORACIÓN FÍSICA:**\nPaciente consciente, orientado. Pupilas isocóricas normorreflécticas. Exploración neurológica sin alteraciones. Cuello sin rigidez.\n\n**IMPRESIÓN DIAGNÓSTICA:**\nCefalea tensional por estrés laboral.\n\n**PLAN:**\n1. Reposo relativo.\n2. Paracetamol 500mg cada 8 hrs por 3 días.\n3. Cita abierta a urgencias en caso de no presentar mejoría o agregar signos de alarma."
-    },
-    {
-      id: 'mock-prueba-1',
-      name: 'Paciente de Prueba',
-      specialty: 'Medicina General',
-      status: 'reviewed',
-      statusText: 'FIRMADA',
-      time: Date.now() - 86400000 * 3, // Hace 3 días
-      specialtyColor: '#1F5F4B',
-      vitals: {
-        ta: '135/88',
-        fc: '82',
-        fr: '18',
-        temp: '37.1',
-        sat: '96%',
-        peso: '88.5',
-        talla: '1.72',
-        imc: '29.9'
-      },
-      transcription: "**FICHA DE IDENTIFICACIÓN:**\nPaciente masculino de 58 años de edad, originario de Monterrey, empleado administrativo.\n\n**ANTECEDENTES HEREDOFAMILIARES:**\nPadre finado por complicaciones de Diabetes Mellitus tipo 2. Madre viva con hipertensión arterial en control.\n\n**ANTECEDENTES PERSONALES PATOLÓGICOS:**\nHipertensión arterial sistémica diagnosticada hace 5 años, en tratamiento con Losartán 50mg cada 24 horas. Niega alergias.\n\n**PADECIMIENTO ACTUAL:**\nAcude a consulta de seguimiento refiriendo malestar general y mareos ocasionales matutinos. Refiere falta de apego a dieta en el último mes.\n\n**EXPLORACIÓN FÍSICA:**\nPaciente consciente, alerta. Mucosas orales semi-hidratadas. Cardiopulmonar sin alteraciones. Abdomen globoso a expensas de panículo adiposo, blando, depresible, sin megalias. Extremidades sin edema, pulsos distales presentes.\n\n**IMPRESIÓN DIAGNÓSTICA:**\nHipertensión Arterial Sistémica descontrolada. Sobrepeso (IMC 29.9).\n\n**PLAN:**\n1. Continuar Losartán 50mg cada 24 hrs.\n2. Iniciar bitácora de presión arterial por 14 días.\n3. Restricción estricta de sodio en dieta.\n4. Cita de revaloración en 2 semanas con resultados de bitácora y Química Sanguínea de 6 elementos."
-    },
-    {
-      id: 'mock-prueba-2',
-      name: 'Paciente de Prueba',
-      specialty: 'Medicina General',
-      status: 'pending',
-      statusText: 'PENDIENTE',
-      time: Date.now(), // Hoy
-      specialtyColor: '#1F5F4B',
-      vitals: {
-        ta: '128/82',
-        fc: '74',
-        peso: '87.0',
-        imc: '29.4'
-      },
-      transcription: "**PADECIMIENTO ACTUAL:**\nAcude a revisión de bitácora de presión tras dos semanas de ajuste dietético. Refiere sentirse mucho mejor, niega cefaleas o mareos recientes. Trae bitácora con promedios matutinos de 125/80 mmHg.\n\n**EXPLORACIÓN FÍSICA:**\nPaciente con buen estado de hidratación, ruidos cardíacos rítmicos de buen tono e intensidad. Pulmones limpios. TA en consultorio 128/82 mmHg.\n\n**IMPRESIÓN DIAGNÓSTICA:**\nHipertensión Arterial Sistémica en adecuado control actual.\n\n**PLAN:**\n1. Mantener dosis actual de Losartán 50mg.\n2. Felicitar por apego a dieta y reducción de 1.5kg de peso.\n3. Cita abierta o en 3 meses para seguimiento rutinario."
-    }
-  ],
-  '2': [],
-  '3': [],
-};
+const INITIAL_NOTES: Record<string, ClinicalNote[]> = {};
 
 const INITIAL_SETTINGS: AppSettings = {
   notifications: {
@@ -302,10 +242,10 @@ const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
 export const ProfileProvider = ({ children }: { children: ReactNode }) => {
   const [isReady, setIsReady] = useState(false);
   const [profile, setProfile] = useState<ProfileType>('General');
-  const [doctorName, setDoctorNameState] = useState('Dr. Snupi');
-  const [doctorCedula, setDoctorCedulaState] = useState('12345678');
-  const [doctorUniversity, setDoctorUniversityState] = useState('Universidad Nacional Autónoma de México');
-  const [doctorAddress, setDoctorAddressState] = useState('Av. Insurgentes Sur 123, CDMX');
+  const [doctorName, setDoctorNameState] = useState('');
+  const [doctorCedula, setDoctorCedulaState] = useState('');
+  const [doctorUniversity, setDoctorUniversityState] = useState('');
+  const [doctorAddress, setDoctorAddressState] = useState('');
   const [profileImage, setProfileImageState] = useState<string | null>(null);
   const [dashboardProfileId, setDashboardProfileIdState] = useState('1');
   const [recordsProfileId, setRecordsProfileIdState] = useState('1');
@@ -373,10 +313,15 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
               formattedVitals = record.vitals_data;
             }
 
+            let resolvedSpecialty = record.specialty || 'General';
+            if (record.folder_id === 'nota_rapida') {
+              resolvedSpecialty = 'Nota rápida';
+            }
+
             const note: ClinicalNote = {
               id: record.id,
               name: formattedPatientName,
-              specialty: record.specialty || 'General',
+              specialty: resolvedSpecialty,
               status: record.status as any,
               statusText: record.status === 'pending' ? 'PENDIENTE' : (record.status === 'completed' ? 'NOTA GENERADA' : 'REVISADO'),
               time: new Date(record.created_at).getTime(),
@@ -445,11 +390,18 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
     };
     loadPersistedData();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      // Check if user just logged out — ignore any stale session events
+      const loggedOut = await AsyncStorage.getItem('@Klino_LoggedOut');
+      if (loggedOut === 'true') {
+        console.log('--- [DEBUG Auth State] Ignorando evento auth post-logout');
+        setUserId(null);
+        return;
+      }
+
       if (session?.user) {
         console.log('--- [DEBUG Auth State] Usuario autenticado activo en Supabase:', session.user.id);
         setUserId(session.user.id);
-        // Sincronizar notas de la nube al iniciar sesión (nuevo dispositivo o re-login)
         if (_event === 'SIGNED_IN') {
           console.log('--- [DEBUG Auth State] Evento SIGNED_IN detectado. Sincronizando notas...');
           syncWithCloud();
@@ -516,6 +468,19 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     } catch (e) { console.error("Error guardando nota en Supabase", e); }
+
+    // Generar notificación al agregar nota
+    if (appSettings.notifications.patients) {
+      addNotification({
+        title: 'Nueva nota clínica',
+        description: `Se ha guardado una nueva nota para ${note.name || 'Paciente Nuevo'}. El resumen general de su expediente ha sido actualizado.`,
+        time: new Date().toISOString(),
+        type: 'patient',
+        icon: 'FileText',
+        color: profile === 'General' ? '#1B4F9B' : '#2A7D6F',
+        unread: true
+      });
+    }
   };
 
   const confirmNote = async (profileId: string, noteId: string, signature?: string[]) => {
@@ -583,10 +548,10 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
   const resetProfile = () => {
     setProfile('General');
-    setDoctorNameState('Dr. Snupi');
-    setDoctorCedulaState('12345678');
-    setDoctorUniversityState('Universidad Nacional Autónoma de México');
-    setDoctorAddressState('Av. Insurgentes Sur 123, CDMX');
+    setDoctorNameState('');
+    setDoctorCedulaState('');
+    setDoctorUniversityState('');
+    setDoctorAddressState('');
     setProfileImageState(null);
     setDashboardProfileIdState('1');
     setRecordsProfileIdState('1');
@@ -600,13 +565,24 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
-      await AsyncStorage.removeItem(STORAGE_KEY);
-      resetProfile();
-      console.log('--- [DEBUG] Sesión cerrada y datos limpiados correctamente');
+      await supabase.auth.signOut({ scope: 'local' });
     } catch (e) {
-      console.error('Error en logout:', e);
+      console.error('Error supabase signout:', e);
     }
+    
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      await AsyncStorage.removeItem('@Klino_Appointments');
+      const allKeys = await AsyncStorage.getAllKeys();
+      const supabaseKeys = allKeys.filter(k => k.includes('supabase'));
+      if (supabaseKeys.length > 0) {
+        await AsyncStorage.multiRemove(supabaseKeys);
+      }
+    } catch (e) {
+      console.error('Error cleaning storage:', e);
+    }
+
+    resetProfile();
   };
 
   const primaryColor = profile === 'General' ? '#1B4F9B' : '#2A7D6F';

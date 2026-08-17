@@ -31,6 +31,9 @@ export default function AgendaScreen() {
   const [newTime, setNewTime] = useState('09:00');
   const [newType, setNewType] = useState('Consulta');
 
+  const [editingAppId, setEditingAppId] = useState<string | null>(null);
+  const [newStatus, setNewStatus] = useState<Appointment['status']>('sin_confirmar');
+
   useEffect(() => {
     loadAppointments();
   }, []);
@@ -50,6 +53,7 @@ export default function AgendaScreen() {
           scrollRef.current.scrollTo({ x: Math.max(0, offset), animated: true });
         }
       }, 100);
+      loadAppointments(); // Recargar en caso de que cambie en otra pantalla
     }, [])
   );
 
@@ -71,14 +75,7 @@ export default function AgendaScreen() {
       if (data) {
         setAppointments(JSON.parse(data));
       } else {
-        const mock: Appointment[] = [
-          { id: '1', patientName: 'Teresa Vidal', time: '09:00', type: 'Consulta', status: 'atendida', dateStr: formatDateId(new Date()) },
-          { id: '2', patientName: 'Andrés Molina', time: '12:00', type: 'Consulta', status: 'atendida', dateStr: formatDateId(new Date()) },
-          { id: '3', patientName: 'Said Hernández', time: '15:40', type: 'Consulta', status: 'pendiente_aprobacion', dateStr: formatDateId(new Date()) },
-          { id: '4', patientName: 'Ramiro Cepeda', time: '16:30', type: 'Seguimiento', status: 'confirmada', dateStr: formatDateId(new Date()) },
-          { id: '5', patientName: 'Bruno Alcántara', time: '17:15', type: 'Primera vez', status: 'sin_confirmar', dateStr: formatDateId(new Date()) },
-          { id: '6', patientName: 'Marina Ocaña', time: '18:00', type: 'Control', status: 'sin_confirmar', dateStr: formatDateId(new Date()) }
-        ];
+        const mock: Appointment[] = [];
         setAppointments(mock);
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(mock));
       }
@@ -87,21 +84,54 @@ export default function AgendaScreen() {
 
   const saveAppointment = async () => {
     if (!newPatientName) return;
-    const newApp: Appointment = {
-      id: Math.random().toString(),
-      patientName: newPatientName,
-      time: newTime,
-      type: newType,
-      status: 'sin_confirmar',
-      dateStr: formatDateId(selectedDate)
-    };
-    const updated = [...appointments, newApp];
+    
+    let updated;
+    if (editingAppId) {
+      updated = appointments.map(app => 
+        app.id === editingAppId 
+          ? { ...app, patientName: newPatientName, time: newTime, type: newType, status: newStatus }
+          : app
+      );
+    } else {
+      const newApp: Appointment = {
+        id: Math.random().toString(),
+        patientName: newPatientName,
+        time: newTime,
+        type: newType,
+        status: newStatus,
+        dateStr: formatDateId(selectedDate)
+      };
+      updated = [...appointments, newApp];
+    }
+    
     setAppointments(updated);
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     setModalVisible(false);
-    setNewPatientName('');
-    setNewTime('09:00');
-    setNewType('Consulta');
+  };
+
+  const deleteAppointment = async () => {
+    if (!editingAppId) return;
+    const updated = appointments.filter(app => app.id !== editingAppId);
+    setAppointments(updated);
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setModalVisible(false);
+  };
+
+  const openEditModal = (app?: Appointment) => {
+    if (app) {
+      setEditingAppId(app.id);
+      setNewPatientName(app.patientName);
+      setNewTime(app.time);
+      setNewType(app.type);
+      setNewStatus(app.status);
+    } else {
+      setEditingAppId(null);
+      setNewPatientName('');
+      setNewTime('09:00');
+      setNewType('Consulta');
+      setNewStatus('sin_confirmar');
+    }
+    setModalVisible(true);
   };
 
   const daysInMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
@@ -138,7 +168,7 @@ export default function AgendaScreen() {
           <TouchableOpacity onPress={() => setCalendarModalVisible(true)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ fontWeight: 'bold', letterSpacing: 1 }}>CALENDARIO</KlinoText>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setModalVisible(true)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity onPress={() => openEditModal()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <KlinoText variant="label" color={KLINO_COLORS.verde} style={{ fontWeight: 'bold', letterSpacing: 1 }}>+ CITA</KlinoText>
           </TouchableOpacity>
         </View>
@@ -177,7 +207,7 @@ export default function AgendaScreen() {
         <KlinoText variant="small" color={KLINO_COLORS.gris}>{todaysAppointments.length} citas · {unconfirmedCount} sin confirmar</KlinoText>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
         {todaysAppointments.length === 0 ? (
           <View style={{ padding: 40, alignItems: 'center' }}>
             <KlinoText variant="body" color={KLINO_COLORS.gris}>No hay citas para este día.</KlinoText>
@@ -186,7 +216,7 @@ export default function AgendaScreen() {
           todaysAppointments.map((app, index) => {
             const isPending = app.status === 'pendiente_aprobacion';
             return (
-              <View key={app.id} style={{ borderTopWidth: 1, borderBottomWidth: index === todaysAppointments.length - 1 ? 1 : 0, borderColor: KLINO_COLORS.borderStrong, flexDirection: 'row', backgroundColor: isPending ? KLINO_COLORS.papelHondo : KLINO_COLORS.papel }}>
+              <TouchableOpacity key={app.id} onPress={() => openEditModal(app)} activeOpacity={0.8} style={{ borderTopWidth: 1, borderBottomWidth: index === todaysAppointments.length - 1 ? 1 : 0, borderColor: KLINO_COLORS.borderStrong, flexDirection: 'row', backgroundColor: isPending ? KLINO_COLORS.papelHondo : KLINO_COLORS.papel }}>
                 <View style={{ padding: 24, width: 100 }}>
                   <KlinoText variant="body" color={KLINO_COLORS.verde} style={{ fontWeight: 'bold', fontSize: 18 }}>{app.time}</KlinoText>
                 </View>
@@ -209,52 +239,88 @@ export default function AgendaScreen() {
                     </TouchableOpacity>
                   )}
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })
         )}
       </ScrollView>
 
-      {/* MODAL PARA NUEVA CITA */}
+      {/* MODAL PARA NUEVA CITA / EDITAR */}
       <Modal visible={isModalVisible} animationType="slide" transparent={true}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View style={{ backgroundColor: KLINO_COLORS.papel, padding: 24, borderTopLeftRadius: 0, borderTopRightRadius: 0, height: '80%' }}>
+          <View style={{ backgroundColor: KLINO_COLORS.papel, padding: 24, borderTopLeftRadius: 0, borderTopRightRadius: 0, height: '85%' }}>
             
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-              <KlinoText variant="h2">Nueva Cita</KlinoText>
+              <KlinoText variant="h2">{editingAppId ? 'Editar Cita' : 'Nueva Cita'}</KlinoText>
               <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <X size={24} color={KLINO_COLORS.tinta} strokeWidth={1.75} />
               </TouchableOpacity>
             </View>
 
-            <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 8 }}>NOMBRE DEL PACIENTE</KlinoText>
-            <TextInput 
-              style={{ borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong, fontSize: 18, paddingVertical: 12, marginBottom: 24, fontFamily: 'serif' }}
-              value={newPatientName}
-              onChangeText={setNewPatientName}
-              placeholder="Ej. Juan Pérez"
-            />
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 8 }}>NOMBRE DEL PACIENTE</KlinoText>
+              <TextInput 
+                style={{ borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong, fontSize: 18, paddingVertical: 12, marginBottom: 24, fontFamily: 'serif' }}
+                value={newPatientName}
+                onChangeText={setNewPatientName}
+                placeholder="Ej. Juan Pérez"
+              />
 
-            <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 8 }}>HORA (HH:MM)</KlinoText>
-            <TextInput 
-              style={{ borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong, fontSize: 18, paddingVertical: 12, marginBottom: 24, fontFamily: 'serif' }}
-              value={newTime}
-              onChangeText={setNewTime}
-              placeholder="09:00"
-              keyboardType="numbers-and-punctuation"
-            />
+              <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 8 }}>HORA (HH:MM)</KlinoText>
+              <TextInput 
+                style={{ borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong, fontSize: 18, paddingVertical: 12, marginBottom: 24, fontFamily: 'serif' }}
+                value={newTime}
+                onChangeText={setNewTime}
+                placeholder="09:00"
+                keyboardType="numbers-and-punctuation"
+              />
 
-            <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 8 }}>TIPO DE CITA</KlinoText>
-            <TextInput 
-              style={{ borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong, fontSize: 18, paddingVertical: 12, marginBottom: 40, fontFamily: 'serif' }}
-              value={newType}
-              onChangeText={setNewType}
-              placeholder="Consulta, Seguimiento, etc."
-            />
+              <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 8 }}>TIPO DE CITA</KlinoText>
+              <TextInput 
+                style={{ borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong, fontSize: 18, paddingVertical: 12, marginBottom: 32, fontFamily: 'serif' }}
+                value={newType}
+                onChangeText={setNewType}
+                placeholder="Consulta, Seguimiento, etc."
+              />
 
-            <TouchableOpacity onPress={saveAppointment} style={{ backgroundColor: KLINO_COLORS.verde, paddingVertical: 16, alignItems: 'center' }}>
-              <KlinoText variant="label" color={KLINO_COLORS.papel} style={{ fontWeight: 'bold' }}>GUARDAR CITA</KlinoText>
-            </TouchableOpacity>
+              <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 8 }}>ESTADO DE LA CITA</KlinoText>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 40 }}>
+                {(['sin_confirmar', 'confirmada', 'atendida', 'pendiente_aprobacion'] as Appointment['status'][]).map(status => (
+                  <TouchableOpacity
+                    key={status}
+                    onPress={() => setNewStatus(status)}
+                    style={{
+                      paddingVertical: 8,
+                      paddingHorizontal: 16,
+                      borderWidth: 1,
+                      borderColor: newStatus === status ? KLINO_COLORS.verde : KLINO_COLORS.borderStrong,
+                      backgroundColor: newStatus === status ? KLINO_COLORS.verde : KLINO_COLORS.papel,
+                      borderRadius: 4
+                    }}
+                  >
+                    <KlinoText variant="small" color={newStatus === status ? KLINO_COLORS.papel : KLINO_COLORS.tinta} style={{ fontWeight: 'bold' }}>
+                      {status === 'sin_confirmar' ? 'SIN CONFIRMAR' : status === 'confirmada' ? 'CONFIRMADA' : status === 'atendida' ? 'ATENDIDA' : 'PENDIENTE'}
+                    </KlinoText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {editingAppId && (newStatus === 'confirmada' || newStatus === 'sin_confirmar') && (
+                <TouchableOpacity onPress={() => { setModalVisible(false); router.push('/live-consultation'); }} style={{ backgroundColor: KLINO_COLORS.papelHondo, paddingVertical: 16, alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
+                  <KlinoText variant="label" color={KLINO_COLORS.tinta} style={{ fontWeight: 'bold' }}>ABRIR CONSULTA (DICTAR)</KlinoText>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity onPress={saveAppointment} style={{ backgroundColor: KLINO_COLORS.verde, paddingVertical: 16, alignItems: 'center', marginBottom: 12 }}>
+                <KlinoText variant="label" color={KLINO_COLORS.papel} style={{ fontWeight: 'bold' }}>GUARDAR CAMBIOS</KlinoText>
+              </TouchableOpacity>
+
+              {editingAppId && (
+                <TouchableOpacity onPress={deleteAppointment} style={{ paddingVertical: 16, alignItems: 'center', marginBottom: 24 }}>
+                  <KlinoText variant="label" color={KLINO_COLORS.ambar} style={{ fontWeight: 'bold' }}>ELIMINAR CITA</KlinoText>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
 
           </View>
         </KeyboardAvoidingView>

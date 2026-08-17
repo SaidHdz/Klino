@@ -143,7 +143,7 @@ export default function RecordsScreen() {
         </KlinoText>
         
         {/* LISTA DE PACIENTES */}
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
           {filteredPatients.map((p, i) => (
             <TouchableOpacity 
               key={p.id}

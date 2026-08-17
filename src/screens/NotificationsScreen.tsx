@@ -8,11 +8,17 @@ import { useProfile } from '../context/ProfileContext';
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const { notificationsList = [], markNotificationRead, clearAllNotifications } = useProfile();
+  const { notes = {}, notificationsList = [], markNotificationRead, clearAllNotifications } = useProfile();
 
   const handleClear = () => {
     clearAllNotifications();
   };
+
+  const totalNotes = Object.values(notes).reduce((acc: number, profileNotes: any) => acc + (profileNotes?.length || 0), 0);
+  const minutesSaved = totalNotes * 5; 
+  const hours = Math.floor(minutesSaved / 60);
+  const minutes = minutesSaved % 60;
+  const timeSavedString = hours > 0 ? `${hours} h ${minutes} m` : `${minutes} m`;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: KLINO_COLORS.papel }}>
@@ -59,14 +65,14 @@ export default function NotificationsScreen() {
           ))
         )}
 
-        {/* Resumen Semanal Card (Static for now) */}
+        {/* Resumen Semanal Card */}
         <TouchableOpacity activeOpacity={0.9} style={{ backgroundColor: KLINO_COLORS.verde, padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong, marginTop: 32 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <KlinoText variant="label" color={KLINO_COLORS.papelHondo} style={{ letterSpacing: 2 }}>RESUMEN SEMANAL</KlinoText>
             <ChevronRight size={20} color={KLINO_COLORS.papelHondo} strokeWidth={1.75} />
           </View>
-          <KlinoText variant="h2" color={KLINO_COLORS.papel} style={{ fontSize: 28, marginBottom: 8 }}>Te ahorraste 6 h 40 m</KlinoText>
-          <KlinoText variant="small" color={KLINO_COLORS.papelHondo} style={{ lineHeight: 20, marginBottom: 32 }}>74 documentos dictados · 71 aprobados · 41 s en promedio para aprobar</KlinoText>
+          <KlinoText variant="h2" color={KLINO_COLORS.papel} style={{ fontSize: 28, marginBottom: 8 }}>Te ahorraste {timeSavedString}</KlinoText>
+          <KlinoText variant="small" color={KLINO_COLORS.papelHondo} style={{ lineHeight: 20, marginBottom: 32 }}>{totalNotes} documentos dictados · 41 s en promedio para aprobar</KlinoText>
           
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 40 }}>
             <View style={{ flex: 1, height: 12, backgroundColor: 'rgba(244, 241, 234, 0.4)', marginHorizontal: 2 }} />
