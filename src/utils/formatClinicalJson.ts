@@ -54,8 +54,18 @@ export function formatClinicalJson(input: string | object): ParsedClinicalData {
     };
   }
 
+  // Desempaquetar payload / data si viene encapsulado por n8n ({ success: true, payload: { ... } })
+  if (cleanObj.payload && typeof cleanObj.payload === 'object') {
+    cleanObj = cleanObj.payload;
+  } else if (cleanObj.data && typeof cleanObj.data === 'object') {
+    cleanObj = cleanObj.data;
+  }
+
   // 1. PACIENTE
-  const paciente = cleanObj.paciente || cleanObj.Paciente || cleanObj.nombre_paciente || cleanObj.patient_name || 'Paciente Nuevo';
+  let paciente = cleanObj.paciente || cleanObj.Paciente || cleanObj.nombre_paciente || cleanObj.patient_name || 'Paciente Nuevo';
+  if (paciente === 'Desconocido' || paciente === 'desconocido') {
+    paciente = 'Paciente (Sin identificar)';
+  }
 
   // 2. SIGNOS VITALES
   let vitals: ParsedClinicalData['vitals'] = undefined;
@@ -74,7 +84,7 @@ export function formatClinicalJson(input: string | object): ParsedClinicalData {
   }
 
   // 3. NOTA CLÍNICA → Markdown
-  const nc = cleanObj.nota_clinica || cleanObj.Nota_Clinica || cleanObj;
+  const nc = cleanObj.nota_clinica || cleanObj.Nota_Clinica || cleanObj.nota_limpia || cleanObj.Nota_Limpia || cleanObj.nota || cleanObj;
   let transcription = '';
 
   if (typeof nc === 'string') {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, View, TouchableWithoutFeedback, StyleSheet, TouchableOpacity } from 'react-native';
-import { FileText, ClipboardList, Pill, X } from 'lucide-react-native';
+import { FileText, ClipboardList, Pill, Brain, X } from 'lucide-react-native';
 import { KLINO_COLORS } from '../../constants/theme';
 import { KlinoText } from '../common/KlinoText';
 
@@ -44,8 +44,8 @@ export const DictationTypeModal: React.FC<Props> = ({ visible, onClose }) => {
                 />
                 <DictationOption 
                   icon={<ClipboardList size={20} color={KLINO_COLORS.verde} strokeWidth={1.75} />}
-                  title="Nota de evolución"
-                  description="Seguimiento en formato SOAP sobre un expediente que ya existe."
+                  title="Nota rápida / Evolución"
+                  description="Seguimiento continuo o nota rápida sobre un expediente existente."
                   onPress={() => { onClose(); router.push({ pathname: '/live-consultation', params: { folder: 'nota_rapida' } }); }}
                 />
                 <DictationOption 
@@ -53,6 +53,12 @@ export const DictationTypeModal: React.FC<Props> = ({ visible, onClose }) => {
                   title="Modo Pediatría"
                   description="Ajustado para pacientes pediátricos, desarrollo y dosis ponderal."
                   onPress={() => { onClose(); router.push({ pathname: '/live-consultation', params: { folder: 'modo_pediatria' } }); }}
+                />
+                <DictationOption 
+                  icon={<Brain size={20} color={KLINO_COLORS.verde} strokeWidth={1.75} />}
+                  title="Salud Mental / Psicología"
+                  description="Examen del estado mental, red de apoyo e hipótesis diagnóstica."
+                  onPress={() => { onClose(); router.push({ pathname: '/live-consultation', params: { folder: 'modo_psicologia' } }); }}
                 />
               </View>
             </View>

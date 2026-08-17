@@ -101,41 +101,48 @@ export default function LiveConsultationScreen() {
 
       if (audioUri) {
          const formData = new FormData();
-         formData.append('audio', {
-            uri: audioUri,
+         const audioFile = {
+            uri: Platform.OS === 'android' ? audioUri : audioUri.replace('file://', ''),
             type: 'audio/m4a',
-            name: 'consulta.m4a'
-         } as any);
+            name: 'dictado.m4a'
+         } as any;
          
+         // n8n espera "file" en el nodo Whisper (binaryPropertyName: "file") y enviamos "audio" por compatibilidad
+         formData.append('file', audioFile);
+         formData.append('audio', audioFile);
          formData.append('profileId', profile);
          formData.append('folder', folderParam);
 
-         const webhookUrl = process.env.EXPO_PUBLIC_N8N_WEBHOOK_URL || 'https://tu-n8n.com/webhook/klino-audio';
+         const webhookUrl = process.env.EXPO_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.srv1574981.hstgr.cloud/webhook/Klino/upload-audio';
          
          try {
+           console.log(`Enviando audio a n8n: ${webhookUrl} (folder: ${folderParam}, profile: ${profile})`);
            const res = await fetch(webhookUrl, {
              method: 'POST',
              body: formData,
              headers: {
                 Accept: 'application/json',
-                // FormData generará su propio Content-Type con el boundary
              }
            });
            
-           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+           if (!res.ok) {
+             const errorText = await res.text().catch(() => '');
+             throw new Error(`HTTP error! status: ${res.status} - ${errorText}`);
+           }
            
            const data = await res.json();
+           console.log("Respuesta recibida de n8n:", JSON.stringify(data));
            finalNoteData = formatClinicalJson(data);
-         } catch (e) {
+         } catch (e: any) {
            console.error("Error n8n:", e);
            Alert.alert(
              'Aviso de Conexión', 
-             `No se pudo contactar a n8n (${webhookUrl}). Asegúrate de configurar EXPO_PUBLIC_N8N_WEBHOOK_URL en el archivo .env.\n\nSe creará una nota de prueba.`,
+             `No se pudo contactar o procesar en n8n (${webhookUrl}).\n\nDetalle: ${e.message || e}\n\nSe creará una nota de respaldo.`,
              [{ text: 'Entendido' }]
            );
            
            finalNoteData = {
-              paciente: 'Paciente de Prueba (Error red)',
+              paciente: 'Paciente (Sin conexión n8n)',
               transcription: 'S: Paciente acude por chequeo...\nO: TA 128/82, FC 74, peso 81.4kg.\nA: Hipertensión en control.\nP: Losartán 50mg.',
               vitals: { temp: '36.5', fc: '74', ta: '128/82' } as any,
               rawText: 'Fallback local text'
@@ -150,13 +157,20 @@ export default function LiveConsultationScreen() {
       const newNoteId = Math.random().toString(36).substring(7);
       const profile = dashboardProfileId || recordsProfileId || '1';
       
+      const specialtyMap: Record<string, string> = {
+        consulta_general: 'Medicina General',
+        nota_rapida: 'Nota Rápida',
+        modo_pediatria: 'Pediatría',
+        modo_psicologia: 'Psicología'
+      };
+      
       const newNote = {
         id: newNoteId,
         name: finalNoteData.paciente || 'Paciente (Dictado)',
         time: Date.now(),
         status: 'pending' as 'pending',
         statusText: 'PENDIENTE',
-        specialty: 'Medicina General',
+        specialty: specialtyMap[folderParam] || 'Medicina General',
         transcription: finalNoteData.transcription,
         rawTranscription: finalNoteData.rawText,
         vitals: finalNoteData.vitals || {}
@@ -172,6 +186,15 @@ export default function LiveConsultationScreen() {
     }
   };
 
+  const getHeaderTitle = () => {
+    switch (folderParam) {
+      case 'nota_rapida': return 'NOTA RÁPIDA';
+      case 'modo_pediatria': return 'CONSULTA PEDIÁTRICA';
+      case 'modo_psicologia': return 'CONSULTA PSICOLÓGICA';
+      default: return 'HISTORIA CLÍNICA';
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: KLINO_COLORS.verde }}>
       <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: Platform.OS === 'android' ? 40 : 16 }}>
@@ -181,7 +204,7 @@ export default function LiveConsultationScreen() {
           <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <X size={24} color={KLINO_COLORS.papel} strokeWidth={1.75} />
           </TouchableOpacity>
-          <KlinoText variant="label" color={KLINO_COLORS.papel}>HISTORIA CLÍNICA</KlinoText>
+          <KlinoText variant="label" color={KLINO_COLORS.papel}>{getHeaderTitle()}</KlinoText>
           <View style={{ width: 12, height: 12, backgroundColor: isFinishing ? KLINO_COLORS.gris : KLINO_COLORS.ambar }} />
         </View>
 
