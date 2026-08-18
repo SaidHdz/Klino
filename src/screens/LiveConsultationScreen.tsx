@@ -7,9 +7,11 @@ import { KLINO_COLORS } from '../constants/theme';
 import { KlinoText } from '../components/common/KlinoText';
 import { useProfile } from '../context/ProfileContext';
 import { formatClinicalJson } from '../utils/formatClinicalJson';
+import { useKlinoAlert } from '../context/KlinoAlertContext';
 
 export default function LiveConsultationScreen() {
   const router = useRouter();
+  const { showAlert } = useKlinoAlert();
   const params = useLocalSearchParams();
   const folderParam = (params.folder as string) || 'consulta_general';
   
@@ -85,7 +87,7 @@ export default function LiveConsultationScreen() {
     } catch (err) {
       console.error('Fallo al iniciar grabacion', err);
       if (isMountedRef.current) {
-        Alert.alert('Permisos requeridos', 'No se pudo acceder al micrófono o hay otra aplicación usándolo.');
+        showAlert('Permisos requeridos', 'No se pudo acceder al micrófono o hay otra aplicación usándolo.');
       }
     }
   };
@@ -112,7 +114,7 @@ export default function LiveConsultationScreen() {
   };
 
   const handleCancel = async () => {
-    Alert.alert(
+    showAlert(
       "Eliminar Grabación",
       "¿Estás seguro de que quieres eliminar esta grabación y salir?",
       [
@@ -275,7 +277,7 @@ export default function LiveConsultationScreen() {
            }
 
            if (!fallbackSuccess) {
-             Alert.alert(
+             showAlert(
                'Aviso', 
                `Fallo en n8n.\nDetalle: ${e.message}\nSe creará nota local.`,
                [{ text: 'Entendido' }]
@@ -290,7 +292,7 @@ export default function LiveConsultationScreen() {
            }
          }
       } else {
-        Alert.alert('Error', 'No se grabó ningún audio');
+        showAlert('Error', 'No se grabó ningún audio');
         setIsFinishing(false);
         return;
       }
@@ -323,7 +325,7 @@ export default function LiveConsultationScreen() {
     } catch (e) {
       console.error(e);
       setIsFinishing(false);
-      Alert.alert('Error', 'Hubo un problema procesando la historia clínica');
+      showAlert('Error', 'Hubo un problema procesando la historia clínica');
     }
   };
 

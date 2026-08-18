@@ -14,6 +14,7 @@ import * as Notifications from 'expo-notifications';
 import { KLINO_COLORS } from '../src/constants/theme';
 import { ProfileProvider } from '../src/context/ProfileContext';
 import { registerBackgroundTasks } from '../src/services/backgroundTasks';
+import { KlinoAlertProvider } from '../src/context/KlinoAlertContext';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -123,13 +124,15 @@ export default function RootLayout() {
   }
 
   return (
-    <ProfileProvider>
-      <View style={{ flex: 1, backgroundColor: KLINO_COLORS.papel }}>
-        <StatusBar style="dark" backgroundColor={KLINO_COLORS.papel} />
-        <RootLayoutNav />
-        <Toast config={toastConfig} />
-      </View>
-    </ProfileProvider>
+    <KlinoAlertProvider>
+      <ProfileProvider>
+        <View style={{ flex: 1, backgroundColor: KLINO_COLORS.papel }}>
+          <StatusBar style="dark" backgroundColor={KLINO_COLORS.papel} />
+          <RootLayoutNav />
+          <Toast config={toastConfig} />
+        </View>
+      </ProfileProvider>
+    </KlinoAlertProvider>
   );
 }
 
