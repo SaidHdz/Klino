@@ -5,11 +5,13 @@ import { useRouter } from 'expo-router';
 import { KLINO_COLORS } from '../../src/constants/theme';
 import { KlinoText } from '../../src/components/common/KlinoText';
 import { useProfile } from '../../src/context/ProfileContext';
+import { useKlinoAlert } from '../../src/context/KlinoAlertContext';
 import { FadingScrollContainer } from '../../src/components/common/FadingScrollContainer';
 
 export default function RecordsScreen() {
   const router = useRouter();
   const { notes, intelligenceModes, recordsProfileId, setRecordsProfileId, deleteMultipleNotes } = useProfile();
+  const { showAlert } = useKlinoAlert();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Asegurarnos de que el ID por defecto sea el primer modo o 'all'
@@ -55,7 +57,7 @@ export default function RecordsScreen() {
   };
 
   const handleDeletePatient = (patientName: string) => {
-    Alert.alert(
+    showAlert(
       "Eliminar expediente",
       `¿Estás seguro de que deseas eliminar todo el expediente de ${patientName}? Esta acción borrará todas sus notas y no se puede deshacer.`,
       [
