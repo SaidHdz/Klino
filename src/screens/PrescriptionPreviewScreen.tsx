@@ -47,12 +47,15 @@ export default function PrescriptionPreviewScreen() {
   const footers: string[] = [];
 
   indicationLines.forEach(line => {
-    const cleaned = line.replace(/^-\s*/, '').replace(/\*\*/g, '').trim();
-    if (cleaned.toLowerCase().includes('cita') || cleaned.toLowerCase().includes('favor de') || (!cleaned.includes(',') && cleaned.length > 50)) {
+    // Soporte para notas nuevas y viejas (remueve guiones, viñetas, asteriscos)
+    const cleaned = line.replace(/^[•\-\s]+/, '').replace(/\*\*/g, '').trim();
+    if (cleaned.toLowerCase().includes('cita') || cleaned.toLowerCase().includes('favor de') || (!cleaned.includes(',') && !cleaned.includes('-') && !cleaned.includes(':') && cleaned.length > 50)) {
       footers.push(cleaned);
     } else {
-      const parts = cleaned.split(/,|\s-\s|\.\s/);
-      medications.push({ main: parts[0], sub: parts.slice(1).join(', ') || '' });
+      // Intenta separar por ' - ', ':' o ','
+      const splitChar = cleaned.includes(' - ') ? ' - ' : (cleaned.includes(':') ? ':' : ',');
+      const parts = cleaned.split(splitChar);
+      medications.push({ main: parts[0].trim(), sub: parts.slice(1).join(splitChar).trim() || '' });
     }
   });
 
@@ -206,7 +209,9 @@ export default function PrescriptionPreviewScreen() {
             <View style={{ borderWidth: 1, borderColor: isApproved ? KLINO_COLORS.verde : KLINO_COLORS.ambar, paddingHorizontal: 12, paddingVertical: 6, marginRight: 16 }}>
               <KlinoText variant="label" color={isApproved ? KLINO_COLORS.verde : KLINO_COLORS.ambar} style={{ fontWeight: 'bold', letterSpacing: 1 }}>{isApproved ? 'APROBADA' : 'SIN APROBAR'}</KlinoText>
             </View>
-            <KlinoText variant="small" color={KLINO_COLORS.gris}>Folio KL-{folio} · {new Date(Number(note.time)).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</KlinoText>
+            <View style={{ flex: 1 }}>
+              <KlinoText variant="small" color={KLINO_COLORS.gris} style={{ flexWrap: 'wrap' }}>Folio KL-{folio} · {new Date(Number(note.time)).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</KlinoText>
+            </View>
           </View>
 
         </View>

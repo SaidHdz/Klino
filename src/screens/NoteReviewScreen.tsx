@@ -80,7 +80,7 @@ export default function NoteReviewScreen() {
           <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <ArrowLeft size={24} color={KLINO_COLORS.tinta} strokeWidth={1.75} />
           </TouchableOpacity>
-          <KlinoText variant="body" style={{ fontWeight: 'bold' }}>Historia clínica</KlinoText>
+          <KlinoText variant="body" style={{ fontWeight: 'bold' }}>{note?.specialty || 'Consulta general'}</KlinoText>
         </View>
         {!approved && <KlinoBadge label="SIN APROBAR" variant="amber" />}
         {approved && <KlinoBadge label="FIRMADA" variant="green" />}
@@ -128,8 +128,12 @@ export default function NoteReviewScreen() {
 
         {/* BLOQUE DE RECETA VINCULADA */}
         {(() => {
-          const parts = text.split(/PLAN:|plan:/i);
-          const planText = parts.length > 1 ? parts[1].trim() : '';
+          let planText = '';
+          if (text.toUpperCase().includes('RECETA:')) {
+            planText = text.split(/RECETA:/i)[1]?.trim() || '';
+          } else if (text.toUpperCase().includes('PLAN:')) {
+            planText = text.split(/PLAN:/i)[1]?.trim() || '';
+          }
           
           return planText ? (
             <TouchableOpacity 

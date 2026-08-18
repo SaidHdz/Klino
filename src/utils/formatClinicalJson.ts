@@ -205,12 +205,10 @@ export function formatClinicalJson(input: string | object): ParsedClinicalData {
   }
 
   // Forzar que el campo clínico contenga la alergia si se menciona explícitamente en texto plano pero no viene estructurado
-  const alerMatch = transcription.match(/(?:ALERGIC[OA]|ALERGIA)(?: A LA| AL| A)?\s+([A-Za-z\s]+)/i);
+  const alerMatch = transcription.match(/(?:ALERGIC[OA]|ALERGIA)(?: A LA| AL| A)?\s+([A-Za-z\s]{1,40})(?:[.,;]|\n|$)/i);
   if (alerMatch && !transcription.includes('ANTECEDENTES PERSONALES PATOLÓGICOS:')) {
      const alergiaDetectada = alerMatch[1].trim();
-     if (alergiaDetectada.length > 3) {
-       transcription += `\n\n**ANTECEDENTES PERSONALES PATOLÓGICOS:**\nALERGIAS: ${alergiaDetectada}`;
-     }
+     transcription += `\n\nANTECEDENTES PERSONALES PATOLÓGICOS:\nAlergias: ${alergiaDetectada}`;
   }
 
   return { paciente, transcription, vitals, rawText };
