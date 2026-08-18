@@ -231,24 +231,33 @@ const ResumenTab = ({ router, notes, patientName, onDictarPress }: any) => {
 
   // Alergias
   const allAllergies = (notes || []).map((n: any) => {
-    if (n.clinicalData?.alergias) return n.clinicalData.alergias;
-    
-    // First try to match single line format "Alergias: Penicilina"
-    const singleLineMatch = n.transcription?.match(/(?:ALERGIAS|ANTECEDENTES ALÉRGICOS|ALERGIA|ALERGICOS)[^:\n]*:\s*([^\n]+)/i);
-    if (singleLineMatch && singleLineMatch[1].trim().length > 0) {
-      const text = singleLineMatch[1].replace(/\*\*/g, '').trim();
+    if (n.clinicalData?.alergias) {
+      const text = n.clinicalData.alergias.replace(/\*\*/g, '').trim();
       if (text.toLowerCase() !== 'negados' && text.toLowerCase() !== 'no' && text.toLowerCase() !== 'ninguna' && text.toLowerCase() !== 'negadas') {
         return text;
       }
       return null;
+    }
+    
+    // First try to match single line format "Alergias: Penicilina"
+    const singleLineMatch = n.transcription?.match(/(?:ALERGIAS|ANTECEDENTES ALÉRGICOS|ALERGIA|ALERGICOS)[^:\n]*:[ \t]*(?:\r?\n)?[ \t]*([^\n]+)/i);
+    if (singleLineMatch && singleLineMatch[1].trim().length > 0) {
+      const text = singleLineMatch[1].replace(/\*\*/g, '').trim();
+      if (!(text === text.toUpperCase() && text.length > 5 && !text.includes('NINGUN'))) {
+        if (text.toLowerCase() !== 'negados' && text.toLowerCase() !== 'no' && text.toLowerCase() !== 'ninguna' && text.toLowerCase() !== 'negadas') {
+          return text;
+        }
+      }
     }
 
     // Fallback for multi-line format stopping at double newline, a new section (**), or a new key (Line ending with colon)
     const match = n.transcription?.match(/(?:ALERGIAS|ANTECEDENTES ALÉRGICOS|ALERGIA|ALERGICOS)[^:]*:\s*([\s\S]+?)(?=\n\n|\n\*\*|\n[A-Z][A-Z\s]+:|\n- [A-Z][a-z]+:|$)/i);
     if (match) {
       const text = match[1].replace(/\*\*/g, '').trim();
-      if (text.toLowerCase() !== 'negados' && text.toLowerCase() !== 'no' && text.toLowerCase() !== 'ninguna' && text.toLowerCase() !== 'negadas') {
-        return text;
+      if (!(text === text.toUpperCase() && text.length > 5 && !text.includes('NINGUN'))) {
+        if (text.toLowerCase() !== 'negados' && text.toLowerCase() !== 'no' && text.toLowerCase() !== 'ninguna' && text.toLowerCase() !== 'negadas') {
+          return text;
+        }
       }
     }
     return null;

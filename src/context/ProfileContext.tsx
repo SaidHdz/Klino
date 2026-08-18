@@ -299,6 +299,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
             // Formatear soap_note_text si es JSON crudo
             let formattedTranscription = '';
             let formattedVitals: any = undefined;
+            let formattedAlergias: string | undefined = undefined;
             let dbPatientName = record.patients ? record.patients.full_name : record.patient_name;
             let formattedPatientName = dbPatientName || 'Paciente Sin Nombre';
 
@@ -307,6 +308,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
               const parsed = formatClinicalJson(soapSource);
               formattedTranscription = parsed.transcription;
               formattedVitals = parsed.vitals || record.vitals_data;
+              formattedAlergias = parsed.alergias;
               if (parsed.paciente && parsed.paciente !== 'Paciente Nuevo') {
                 formattedPatientName = parsed.paciente;
               }
@@ -332,7 +334,10 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
               rawTranscription: record.raw_transcription || '',
               specialtyColor: record.specialty === 'Cirugía' ? '#2A7D6F' : (record.specialty === 'Pediatría' ? '#1E5FAD' : '#1B4F9B'),
               signature: record.signature_data,
-              vitals: formattedVitals
+              vitals: formattedVitals,
+              clinicalData: {
+                alergias: formattedAlergias
+              }
             };
             // Mapear folder_id correctamente: puede ser ID numérico ('1','2','3') o webhookFolderKey ('consulta_general','modo_pediatria')
             let pId = record.folder_id || '1';

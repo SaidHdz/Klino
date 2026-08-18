@@ -9,6 +9,7 @@
 export interface ParsedClinicalData {
   paciente: string;
   transcription: string;
+  alergias?: string;
   vitals?: {
     ta: string; fc: string; fr: string; temp: string;
     sat: string; peso: string; talla: string; imc: string;
@@ -204,12 +205,47 @@ export function formatClinicalJson(input: string | object): ParsedClinicalData {
     if (Object.keys(vitals as any).length === 0) vitals = undefined;
   }
 
-  // Forzar que el campo clínico contenga la alergia si se menciona explícitamente en texto plano pero no viene estructurado
-  const alerMatch = transcription.match(/(?:ALERGIC[OA]|ALERGIA)(?: A LA| AL| A)?\s+([A-Za-z\s]{1,40})(?:[.,;]|\n|$)/i);
-  if (alerMatch && !transcription.includes('ANTECEDENTES PERSONALES PATOLÓGICOS:')) {
-     const alergiaDetectada = alerMatch[1].trim();
-     transcription += `\n\nANTECEDENTES PERSONALES PATOLÓGICOS:\nAlergias: ${alergiaDetectada}`;
+  // 4. ALERGIAS EXPLÍCITAS
+  let alergias: string | undefined = undefined;
+  if (cleanObj.alergias) {
+    alergias = String(cleanObj.alergias).trim();
+  } else if (cleanObj.Alergias) {
+    alergias = String(cleanObj.Alergias).trim();
   }
 
-  return { paciente, transcription, vitals, rawText };
+  // Forzar que el campo clínico contenga la alergia si se menciona explícitamente en texto plano pero no viene estructurado
+  const alerMatch = transcription.match(/(?:ALERGIC[OA]|ALERGIA)(?: A LA| AL| A)?\s+([A-Za-z\s]{1,40})(?:[.,;]|\n|$)/i);
+  if (alerMatch) {
+     const alergiaDetectada = alerMatch[1].trim();
+     if (!alergias) {
+       alergias = alergiaDetectada;
+     }
+     if (!transcription.includes('ANTECEDENTES PERSONALES PATOLÓGICOS:')) {
+       transcription += `\n\nANTECEDENTES PERSONALES PATOLÓGICOS:\nAlergias: ${alergiaDetectada}`;
+     }
+  }
+
+  // Tratar de sacar de la transcripción si no se encontró arriba
+  if (!alergias) {
+    const singleLineMatch = transcription.match(/(?:ALERGIAS|ANTECEDENTES ALÉRGICOS|ALERGIA|ALERGICOS)[^:\n]*:[ \t]*(?:\r?\n)?[ \t]*([^\n]+)/i);
+    if (singleLineMatch && singleLineMatch[1].trim().length > 0) {
+      const text = singleLineMatch[1].replace(/\*\*/g, '').trim();
+      // Si capturó otro encabezado en mayúsculas por estar vacío, lo ignoramos
+      if (!(text === text.toUpperCase() && text.length > 5 && !text.includes('NINGUN'))) {
+         alergias = text;
+      }
+    } 
+    
+    if (!alergias) {
+      const match = transcription.match(/(?:ALERGIAS|ANTECEDENTES ALÉRGICOS|ALERGIA|ALERGICOS)[^:]*:\s*([\s\S]+?)(?=\n\n|\n\*\*|\n[A-Z][A-Z\s]+:|\n- [A-Z][a-z]+:|$)/i);
+      if (match) {
+        const text = match[1].replace(/\*\*/g, '').trim();
+        if (!(text === text.toUpperCase() && text.length > 5 && !text.includes('NINGUN'))) {
+           alergias = text;
+        }
+      }
+    }
+  }
+
+  return { paciente, transcription, vitals, alergias, rawText };
 }
