@@ -572,7 +572,7 @@ const RecetasTab = ({ notes, router, patientName, onDictarPress }: any) => {
         id: n.id,
         time: n.time,
         profileId: n.profileId,
-        desc: planText.substring(0, 100) + (planText.length > 100 ? '...' : '')
+        desc: planText.replace(/\*\*/g, '').replace(/^[•\-\s]+/g, '').substring(0, 100).trim() + (planText.length > 100 ? '...' : '')
       };
     }) || [];
 
