@@ -164,6 +164,7 @@ function RootLayoutNav() {
         <Stack.Screen name="scanner-select" />
         <Stack.Screen name="modal" />
         <Stack.Screen name="closing-session" />
+        <Stack.Screen name="patient-timeline" />
       </Stack>
     </ThemeProvider>
   );

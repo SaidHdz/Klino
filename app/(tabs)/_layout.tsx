@@ -58,12 +58,6 @@ export default function TabLayout() {
             tabBarIcon: ({ color }) => <User size={24} color={color} strokeWidth={1.75} />,
           }}
         />
-        <Tabs.Screen
-          name="patient-timeline"
-          options={{
-            href: null,
-          }}
-        />
       </Tabs>
       <DictationHandle />
     </View>
