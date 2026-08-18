@@ -30,27 +30,19 @@ export default function PatientTimelineScreen() {
 
   const [dictationModalVisible, setDictationModalVisible] = useState(false);
   
-  // Obtener todas las notas del paciente seleccionado
-  const currentNotes = (recordsProfileId && recordsProfileId !== 'all') 
-    ? (notes[recordsProfileId] || []).map(n => ({ ...n, profileId: recordsProfileId })) 
-    : Object.entries(notes || {}).flatMap(([pId, pNotes]) => (pNotes || []).map((n: any) => ({ ...n, profileId: pId })));
+  // Obtener todas las notas del paciente — SIEMPRE buscar en todos los perfiles para no perder notas
+  const allNotes = Object.entries(notes || {}).flatMap(([pId, pNotes]) => (pNotes || []).map((n: any) => ({ ...n, profileId: pId })));
     
-  const rawPatientNotes = currentNotes.filter(n => (n.name || '').trim().toLowerCase() === (currentName || '').trim().toLowerCase());
+  const rawPatientNotes = allNotes.filter(n => (n.name || '').trim().toLowerCase() === (currentName || '').trim().toLowerCase());
   const patientNotesMap = new Map();
-  const transcriptionsSet = new Set();
 
   rawPatientNotes.forEach(n => {
-    const textContent = (n.transcription || n.rawTranscription || '').trim();
-    const isDuplicateText = textContent.length > 10 && transcriptionsSet.has(textContent);
-    
-    if (!patientNotesMap.has(n.id) && !isDuplicateText) {
-      // Omitir notas vacías que no estén pendientes de procesar
+    if (!patientNotesMap.has(n.id)) {
+      // Solo omitir notas vacías sin transcripción y que no estén pendientes
+      const textContent = (n.transcription || n.rawTranscription || '').trim();
       if (textContent.length === 0 && n.status !== 'pending') return;
 
       patientNotesMap.set(n.id, n);
-      if (textContent.length > 10) {
-        transcriptionsSet.add(textContent);
-      }
     }
   });
   const patientNotes = Array.from(patientNotesMap.values())

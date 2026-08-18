@@ -43,12 +43,15 @@ export default function RecordsScreen() {
     return name.substring(0, 2).toUpperCase();
   };
 
+  // Buscar en TODOS los perfiles para contar documentos correctamente
+  const allNotesFlat = Object.values(notes).flat();
+
   const hasPendingDocs = (patientName: string) => {
-    return sortedNotes.some(n => (n.name || '').trim().toLowerCase() === patientName.trim().toLowerCase() && n.status === 'pending');
+    return allNotesFlat.some(n => (n.name || '').trim().toLowerCase() === patientName.trim().toLowerCase() && n.status === 'pending');
   };
 
   const getDocsCount = (patientName: string) => {
-    return sortedNotes.filter(n => (n.name || '').trim().toLowerCase() === patientName.trim().toLowerCase()).length;
+    return allNotesFlat.filter(n => (n.name || '').trim().toLowerCase() === patientName.trim().toLowerCase()).length;
   };
 
   const handleDeletePatient = (patientName: string) => {
