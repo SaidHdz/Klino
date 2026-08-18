@@ -56,6 +56,7 @@ export interface ClinicalNarrative {
 
 export interface ClinicalNote {
   id: string;
+  patientId?: string;
   name: string;
   specialty: string;
   statusText: string;
@@ -287,7 +288,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
       const { data: dbRecords, error } = await supabase
         .from('clinical_records')
-        .select('*')
+        .select('*, patients(full_name)')
         .eq('doctor_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -298,7 +299,8 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
             // Formatear soap_note_text si es JSON crudo
             let formattedTranscription = '';
             let formattedVitals: any = undefined;
-            let formattedPatientName = record.patient_name || 'Paciente Sin Nombre';
+            let dbPatientName = record.patients ? record.patients.full_name : record.patient_name;
+            let formattedPatientName = dbPatientName || 'Paciente Sin Nombre';
 
             const soapSource = record.soap_note_text || record.soap_note || '';
             if (soapSource && typeof soapSource === 'string' && soapSource.trim()) {
@@ -320,6 +322,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
             const note: ClinicalNote = {
               id: record.id,
+              patientId: record.patient_id,
               name: formattedPatientName,
               specialty: resolvedSpecialty,
               status: record.status as any,
@@ -480,9 +483,43 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        let currentPatientId = note.patientId;
+        
+        // Si no viene con patientId, buscar o crear al paciente por nombre
+        if (!currentPatientId && note.name) {
+          const cleanName = note.name.trim();
+          const { data: existingPatient } = await supabase
+            .from('patients')
+            .select('id')
+            .eq('doctor_id', user.id)
+            .ilike('full_name', cleanName)
+            .maybeSingle();
+
+          if (existingPatient) {
+            currentPatientId = existingPatient.id;
+          } else {
+            // Crear paciente nuevo
+            const { data: newPatient } = await supabase
+              .from('patients')
+              .insert({ doctor_id: user.id, full_name: cleanName })
+              .select('id')
+              .single();
+            if (newPatient) currentPatientId = newPatient.id;
+          }
+        }
+
+        // Add the patientId to local state
+        if (currentPatientId) {
+          setNotes(prev => ({
+            ...prev,
+            [profileId]: (prev[profileId] || []).map(n => n.id === note.id ? { ...n, patientId: currentPatientId } : n)
+          }));
+        }
+
         const { data: insertedData, error } = await supabase.from('clinical_records').insert({
           doctor_id: user.id, 
-          patient_name: note.name,
+          patient_id: currentPatientId || null,
+          patient_name: note.name, // Por retrocompatibilidad
           specialty: note.specialty, 
           status: 'pending',
           raw_transcription: note.rawTranscription || '',
@@ -574,11 +611,24 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updatePatientName = async (profileId: string, oldName: string, newName: string) => {
-    setNotes(prev => ({
-      ...prev,
-      [profileId]: (prev[profileId] || []).map(n => n.name === oldName ? { ...n, name: newName } : n)
-    }));
+    setNotes(prev => {
+      const newNotes = { ...prev };
+      for (const pId in newNotes) {
+        newNotes[pId] = newNotes[pId].map(n => n.name === oldName ? { ...n, name: newName } : n);
+      }
+      return newNotes;
+    });
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data: patients } = await supabase.from('patients').select('id').eq('doctor_id', user.id).ilike('full_name', oldName);
+      if (patients && patients.length > 0) {
+        for (const p of patients) {
+          await supabase.from('patients').update({ full_name: newName }).eq('id', p.id);
+        }
+      }
+      
       await supabase.from('clinical_records').update({ patient_name: newName }).eq('patient_name', oldName);
     } catch (e) { console.error("Error actualizando nombre de paciente en Supabase", e); }
   };
