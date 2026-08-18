@@ -50,25 +50,19 @@ export const DictationTypeModal: React.FC<Props> = ({ visible, onClose, patientN
                   icon={<FileText size={20} color={KLINO_COLORS.verde} strokeWidth={1.75} />}
                   title="Historia clínica"
                   description="Primera vez o expediente completo. Interrogatorio, antecedentes y exploración."
-                  onPress={() => handleSelect('consulta_general')}
+                  onPress={() => handleSelect('historia_clinica')}
                 />
                 <DictationOption 
                   icon={<ClipboardList size={20} color={KLINO_COLORS.verde} strokeWidth={1.75} />}
-                  title="Nota rápida / Evolución"
-                  description="Seguimiento continuo o nota rápida sobre un expediente existente."
-                  onPress={() => handleSelect('nota_rapida')}
+                  title="Nota de evolución"
+                  description="Seguimiento continuo o consulta subsecuente. Actualización puntual."
+                  onPress={() => handleSelect('nota_evolucion')}
                 />
                 <DictationOption 
                   icon={<Pill size={20} color={KLINO_COLORS.verde} strokeWidth={1.75} />}
-                  title="Modo Pediatría"
-                  description="Ajustado para pacientes pediátricos, desarrollo y dosis ponderal."
-                  onPress={() => handleSelect('modo_pediatria')}
-                />
-                <DictationOption 
-                  icon={<Brain size={20} color={KLINO_COLORS.verde} strokeWidth={1.75} />}
-                  title="Salud Mental / Psicología"
-                  description="Examen del estado mental, red de apoyo e hipótesis diagnóstica."
-                  onPress={() => handleSelect('modo_psicologia')}
+                  title="Receta"
+                  description="Emisión de medicamentos, dosis e indicaciones para la farmacia."
+                  onPress={() => handleSelect('receta')}
                 />
               </View>
             </View>

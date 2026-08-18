@@ -89,16 +89,42 @@ export function formatClinicalJson(input: string | object): ParsedClinicalData {
 
   if (typeof nc === 'string') {
     transcription = nc;
+    
+    // Si la nota venía como string, pero hay un plan o receta a nivel raíz, agregarlos
+    const extraBlocks = [];
+    if (cleanObj.plan && Array.isArray(cleanObj.plan)) {
+      const planItems = cleanObj.plan.map((v: any) => {
+        if (typeof v === 'string') return `- ${v}`;
+        const med = v.medicamento || v.terapia || 'Indicación';
+        const parts = [v.dosis, v.indicacion, v.frecuencia, v.duracion, v.indicaciones].filter(Boolean);
+        return `- ${String(med).toUpperCase()}${parts.length ? ` - ${parts.join(' | ')}` : ''}`;
+      });
+      extraBlocks.push(`**PLAN:**\n${planItems.join('\n')}`);
+    }
+    
+    if (cleanObj.receta && Array.isArray(cleanObj.receta)) {
+      const recetaItems = cleanObj.receta.map((v: any) => {
+        if (typeof v === 'string') return `- ${v}`;
+        const med = v.medicamento || v.terapia || 'Indicación';
+        const parts = [v.dosis, v.indicacion, v.frecuencia, v.duracion, v.indicaciones].filter(Boolean);
+        return `- ${String(med).toUpperCase()}${parts.length ? ` - ${parts.join(' | ')}` : ''}`;
+      });
+      extraBlocks.push(`**RECETA:**\n${recetaItems.join('\n')}`);
+    }
+    
+    if (extraBlocks.length > 0) {
+      transcription += '\n\n' + extraBlocks.join('\n\n');
+    }
   } else if (typeof nc === 'object' && nc !== null) {
     const sectionsList = [
-      { label: 'ANTECEDENTES HEREDOFAMILIARES', value: nc.antecedentes_heredofamiliares },
-      { label: 'ANTECEDENTES PERSONALES NO PATOLÓGICOS', value: nc.antecedentes_personales_no_patologicos },
-      { label: 'ANTECEDENTES PERSONALES PATOLÓGICOS', value: nc.antecedentes_personales_patologicos },
-      { label: 'PADECIMIENTO ACTUAL', value: nc.padecimiento_actual },
-      { label: 'EXPLORACIÓN FÍSICA', value: nc.exploracion_fisica },
-      { label: 'IMPRESIÓN DIAGNÓSTICA', value: nc.impresion_diagnostica },
-      { label: 'PLAN', value: nc.plan },
-      { label: 'RECETA', value: nc.receta },
+      { label: 'ANTECEDENTES HEREDOFAMILIARES', value: nc.antecedentes_heredofamiliares || cleanObj.antecedentes_heredofamiliares },
+      { label: 'ANTECEDENTES PERSONALES NO PATOLÓGICOS', value: nc.antecedentes_personales_no_patologicos || cleanObj.antecedentes_personales_no_patologicos },
+      { label: 'ANTECEDENTES PERSONALES PATOLÓGICOS', value: nc.antecedentes_personales_patologicos || cleanObj.antecedentes_personales_patologicos },
+      { label: 'PADECIMIENTO ACTUAL', value: nc.padecimiento_actual || cleanObj.padecimiento_actual },
+      { label: 'EXPLORACIÓN FÍSICA', value: nc.exploracion_fisica || cleanObj.exploracion_fisica },
+      { label: 'IMPRESIÓN DIAGNÓSTICA', value: nc.impresion_diagnostica || cleanObj.impresion_diagnostica },
+      { label: 'PLAN', value: cleanObj.plan || nc.plan },
+      { label: 'RECETA', value: cleanObj.receta || cleanObj.Receta || nc.receta || nc.Receta },
     ];
 
     const formattedBlocks = sectionsList
@@ -110,7 +136,7 @@ export function formatClinicalJson(input: string | object): ParsedClinicalData {
       .map(item => {
         if (Array.isArray(item.value)) {
           const listItems = item.value.map((v: any) => {
-            if (typeof v === 'string') return `• ${v}`;
+            if (typeof v === 'string') return `- ${v}`;
             
             const med = v.medicamento || v.terapia || 'Indicación';
             const parts = [];
@@ -121,7 +147,7 @@ export function formatClinicalJson(input: string | object): ParsedClinicalData {
             if (v.indicaciones) parts.push(v.indicaciones);
             
             const desc = parts.join(' | ');
-            return `• **${med}**${desc ? `: ${desc}` : ''}`;
+            return `- ${String(med).toUpperCase()}${desc ? ` - ${desc}` : ''}`;
           });
           return `**${item.label}:**\n${listItems.join('\n')}`;
         }

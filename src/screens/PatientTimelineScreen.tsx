@@ -371,7 +371,7 @@ const ResumenTab = ({ router, notes, patientName, onDictarPress }: any) => {
 };
 
 const HistoriaClinicaTab = ({ notes }: any) => {
-  const latestNote = notes[0];
+  const latestNote = notes?.find((n: any) => n.specialty === 'Historia Clínica') || notes?.[0];
   const dateStr = latestNote?.time ? new Date(Number(latestNote.time)).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase() : 'SIN FECHA';
   
   const { updateNoteContent, recordsProfileId } = useProfile();
@@ -463,30 +463,34 @@ const HistoriaClinicaTab = ({ notes }: any) => {
   );
 };
 
-const NotasEvolucionTab = ({ notes, router, patientName, onDictarPress }: any) => (
-  <View>
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
-      <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>{notes?.length || 0} NOTAS DE EVOLUCIÓN</KlinoText>
-      <TouchableOpacity onPress={() => onDictarPress()}>
-        <KlinoText variant="label" color={KLINO_COLORS.verde} style={{ fontWeight: 'bold', letterSpacing: 1 }}>DICTAR</KlinoText>
-      </TouchableOpacity>
-    </View>
-    {notes?.map((n: any) => (
-      <TouchableOpacity key={n.id} onPress={() => router.push(`/note-review?id=${n.id}&profileId=${n.profileId || '1'}`)}>
-        <RecordItem 
-          date={new Date(Number(n.time)).toLocaleDateString('es-MX', { day: '2-digit', month: 'long' })}
-          status={n.status === 'pending' ? 'SIN APROBAR' : 'OK'}
-          desc={n.specialty || 'Evolución general'}
-        />
-      </TouchableOpacity>
-    ))}
-    {(!notes || notes.length === 0) && (
-      <View style={{ padding: 24 }}>
-        <KlinoText variant="body" color={KLINO_COLORS.gris}>No hay notas de evolución.</KlinoText>
+const NotasEvolucionTab = ({ notes, router, patientName, onDictarPress }: any) => {
+  const evolutionNotes = notes?.filter((n: any) => n.specialty === 'Nota de Evolución' || n.specialty === 'Nota Rápida') || [];
+  
+  return (
+    <View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
+        <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>{evolutionNotes.length} NOTAS DE EVOLUCIÓN</KlinoText>
+        <TouchableOpacity onPress={() => onDictarPress()}>
+          <KlinoText variant="label" color={KLINO_COLORS.verde} style={{ fontWeight: 'bold', letterSpacing: 1 }}>DICTAR</KlinoText>
+        </TouchableOpacity>
       </View>
-    )}
-  </View>
-);
+      {evolutionNotes.map((n: any) => (
+        <TouchableOpacity key={n.id} onPress={() => router.push(`/note-review?id=${n.id}&profileId=${n.profileId || '1'}`)}>
+          <RecordItem 
+            date={new Date(Number(n.time)).toLocaleDateString('es-MX', { day: '2-digit', month: 'long' })}
+            status={n.status === 'pending' ? 'SIN APROBAR' : 'OK'}
+            desc={n.specialty || 'Evolución general'}
+          />
+        </TouchableOpacity>
+      ))}
+      {evolutionNotes.length === 0 && (
+        <View style={{ padding: 24 }}>
+          <KlinoText variant="body" color={KLINO_COLORS.gris}>No hay notas de evolución.</KlinoText>
+        </View>
+      )}
+    </View>
+  );
+};
 
 const LabsImagenTab = ({ notes }: any) => {
   const docs = notes?.filter((n: any) => n.pdfUri) || [];
@@ -582,16 +586,20 @@ const ReferenciaTab = ({ notes }: any) => {
 };
 
 const RecetasTab = ({ notes, router, patientName, onDictarPress }: any) => {
-  // Extract "PLAN" sections from notes
-  const recetas = notes?.filter((n: any) => n.transcription && n.transcription.toUpperCase().includes('PLAN:'))
+  // Extract "PLAN" or "RECETA" sections from notes, or include notes of specialty 'Receta'
+  const recetas = notes?.filter((n: any) => n.specialty === 'Receta' || (n.transcription && (n.transcription.toUpperCase().includes('RECETA:') || n.transcription.toUpperCase().includes('PLAN:'))))
     .map((n: any) => {
-      const parts = n.transcription.split(/PLAN:|plan:/i);
-      const planText = parts.length > 1 ? parts[1].trim() : '';
+      let planText = n.transcription || '';
+      if (planText.toUpperCase().includes('RECETA:')) {
+        planText = planText.split(/RECETA:/i)[1]?.trim() || '';
+      } else if (planText.toUpperCase().includes('PLAN:')) {
+        planText = planText.split(/PLAN:/i)[1]?.trim() || '';
+      }
       return {
         id: n.id,
         time: n.time,
         profileId: n.profileId,
-        desc: planText.substring(0, 80) + (planText.length > 80 ? '...' : '')
+        desc: planText.substring(0, 100) + (planText.length > 100 ? '...' : '')
       };
     }) || [];
 

@@ -105,7 +105,21 @@ export default function NoteReviewScreen() {
         </KlinoText>
 
         <View style={{ marginBottom: 32 }}>
-          {(() => {
+          {!approved ? (
+            <TextInput
+              multiline
+              value={text}
+              onChangeText={setText}
+              style={{
+                fontSize: 17, 
+                lineHeight: 17 * 1.62, 
+                fontFamily: KLINO_FONTS.bodyRegular,
+                color: KLINO_COLORS.tinta,
+                minHeight: 300,
+                textAlignVertical: 'top'
+              }}
+            />
+          ) : (() => {
             if (!text.includes('**')) {
               return (
                 <KlinoText variant="body" style={{ fontSize: 17, lineHeight: 17 * 1.62, fontFamily: KLINO_FONTS.bodyRegular }}>

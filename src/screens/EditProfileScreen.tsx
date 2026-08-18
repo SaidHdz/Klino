@@ -8,10 +8,12 @@ import { KlinoText } from '../components/common/KlinoText';
 import { KlinoInput } from '../components/common/KlinoInput';
 import { KlinoButton } from '../components/common/KlinoButton';
 import { useProfile } from '../context/ProfileContext';
+import { useKlinoAlert } from '../context/KlinoAlertContext';
 
 export default function EditProfileScreen() {
   const router = useRouter();
   const { doctorName, setDoctorName, doctorCedula, setDoctorCedula, doctorUniversity, setDoctorUniversity, doctorAddress, setDoctorAddress } = useProfile();
+  const { showAlert } = useKlinoAlert();
   
   const [name, setName] = useState(doctorName || '');
   const [specialty] = useState('Medicina General'); // Fijo por ahora, o agregamos un selector
@@ -28,7 +30,7 @@ export default function EditProfileScreen() {
       await setDoctorAddress(address);
       router.back();
     } catch (e) {
-      Alert.alert("Error", "No se pudieron guardar los cambios.");
+      showAlert("Error", "No se pudieron guardar los cambios.");
     }
   };
 

@@ -9,12 +9,15 @@ import { KlinoText } from '../components/common/KlinoText';
 import { KlinoButton } from '../components/common/KlinoButton';
 import { useProfile } from '../context/ProfileContext';
 
+import { useKlinoAlert } from '../context/KlinoAlertContext';
+
 export default function ProfileScreen() {
   const router = useRouter();
   const { doctorName, logout, appSettings, updateSettings, notes } = useProfile();
+  const { showAlert } = useKlinoAlert();
 
   const handleLogout = () => {
-    Alert.alert(
+    showAlert(
       "Cerrar Sesión",
       "¿Estás seguro de que deseas salir?",
       [

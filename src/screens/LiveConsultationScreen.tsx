@@ -301,10 +301,9 @@ export default function LiveConsultationScreen() {
       const targetProfileId = recordsProfileId && recordsProfileId !== 'all' ? recordsProfileId : (dashboardProfileId || '1');
       
       const specialtyMap: Record<string, string> = {
-        consulta_general: 'Medicina General',
-        nota_rapida: 'Nota Rápida',
-        modo_pediatria: 'Pediatría',
-        modo_psicologia: 'Psicología'
+        historia_clinica: 'Historia Clínica',
+        nota_evolucion: 'Nota de Evolución',
+        receta: 'Receta',
       };
       
       const newNote = {
@@ -313,7 +312,7 @@ export default function LiveConsultationScreen() {
         time: Date.now(),
         status: 'pending' as 'pending',
         statusText: 'PENDIENTE',
-        specialty: specialtyMap[folderParam] || 'Medicina General',
+        specialty: specialtyMap[folderParam] || 'General',
         transcription: finalNoteData.transcription,
         rawTranscription: finalNoteData.rawText,
         vitals: finalNoteData.vitals || {}
@@ -331,10 +330,10 @@ export default function LiveConsultationScreen() {
 
   const getHeaderTitle = () => {
     switch (folderParam) {
-      case 'nota_rapida': return 'NOTA RÁPIDA';
-      case 'modo_pediatria': return 'CONSULTA PEDIÁTRICA';
-      case 'modo_psicologia': return 'CONSULTA PSICOLÓGICA';
-      default: return 'HISTORIA CLÍNICA';
+      case 'nota_evolucion': return 'NOTA DE EVOLUCIÓN';
+      case 'receta': return 'RECETA MÉDICA';
+      case 'historia_clinica': return 'HISTORIA CLÍNICA';
+      default: return 'CONSULTA GENERAL';
     }
   };
 

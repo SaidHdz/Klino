@@ -5,10 +5,12 @@ import { useRouter } from 'expo-router';
 import { KLINO_COLORS } from '../constants/theme';
 import { KlinoText } from '../components/common/KlinoText';
 import { useProfile, IntelligenceMode } from '../context/ProfileContext';
+import { useKlinoAlert } from '../context/KlinoAlertContext';
 
 export default function FormatsScreen() {
   const router = useRouter();
   const { intelligenceModes, addIntelligenceMode, deleteIntelligenceMode, updateIntelligenceMode } = useProfile();
+  const { showAlert } = useKlinoAlert();
   
   const [activeTab, setActiveTab] = useState<'ver' | 'agregar'>('ver');
   const [editingModeId, setEditingModeId] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export default function FormatsScreen() {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('Eliminar Formato', '¿Estás seguro de que deseas eliminar este formato? Las notas existentes no se verán afectadas.', [
+    showAlert('Eliminar Formato', '¿Estás seguro de que deseas eliminar este formato? Las notas existentes no se verán afectadas.', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: () => deleteIntelligenceMode(id) }
     ]);
@@ -35,7 +37,7 @@ export default function FormatsScreen() {
 
   const handleSave = () => {
     if (!modeName || !modeFormat) {
-      Alert.alert('Faltan datos', 'Por favor llena el nombre del modo y el formato.');
+      showAlert('Faltan datos', 'Por favor llena el nombre del modo y el formato.');
       return;
     }
 
@@ -45,7 +47,7 @@ export default function FormatsScreen() {
         formatName: modeFormat,
         customPrompt: modePrompt
       });
-      Alert.alert('Éxito', 'Formato actualizado correctamente.');
+      showAlert('Éxito', 'Formato actualizado correctamente.');
     } else {
       addIntelligenceMode({
         name: modeName,
@@ -56,7 +58,7 @@ export default function FormatsScreen() {
         customPrompt: modePrompt,
         sections: []
       });
-      Alert.alert('Éxito', 'Formato agregado correctamente.');
+      showAlert('Éxito', 'Formato agregado correctamente.');
     }
 
     setEditingModeId(null);
