@@ -32,11 +32,11 @@ export default function PrescriptionPreviewScreen() {
   if (note.clinicalData?.plan) {
     planText = note.clinicalData.plan;
   } else {
-    const match = text.match(/PLAN(?: TERAPÉUTICO)?(?: Y RECETA)?:\s*([\s\S]+?)(?=\n\n\*\*|\n\n[A-Z\s]+:|$)/i);
+    const match = text.match(/(?:PLAN(?: TERAPÉUTICO)?|RECETA)(?: Y RECETA)?:\s*([\s\S]+?)(?=\n\n\*\*|\n\n[A-Z\sÁÉÍÓÚÑ]+:|$)/i);
     if (match) {
       planText = match[1].trim();
     } else {
-      const parts = text.split(/PLAN:|plan:/i);
+      const parts = text.split(/PLAN:|plan:|RECETA:|receta:/i);
       planText = parts.length > 1 ? parts[1].trim() : '';
     }
   }
