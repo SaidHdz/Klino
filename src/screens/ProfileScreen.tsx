@@ -68,7 +68,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* TARJETA ESTA SEMANA */}
-        <TouchableOpacity activeOpacity={0.9} style={{ backgroundColor: KLINO_COLORS.verde, padding: 24, marginBottom: 32 }}>
+        <TouchableOpacity activeOpacity={0.9} onPress={() => router.push('/statistics')} style={{ backgroundColor: KLINO_COLORS.verde, padding: 24, marginBottom: 32 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <KlinoText variant="label" color={KLINO_COLORS.papelHondo} style={{ letterSpacing: 2 }}>ESTA SEMANA</KlinoText>
             <ChevronRight size={20} color={KLINO_COLORS.papelHondo} strokeWidth={1.75} />
@@ -121,9 +121,9 @@ export default function ProfileScreen() {
         <TouchableOpacity 
           activeOpacity={0.7} 
           onPress={handleLogout} 
-          style={{ borderWidth: 1, borderColor: '#C05A3E', paddingVertical: 16, alignItems: 'center', marginBottom: 24, backgroundColor: KLINO_COLORS.papelHondo }}
+          style={{ borderWidth: 1, borderColor: KLINO_COLORS.error, paddingVertical: 16, alignItems: 'center', marginBottom: 24, backgroundColor: KLINO_COLORS.papelHondo }}
         >
-          <KlinoText variant="label" color="#C05A3E" style={{ fontWeight: 'bold' }}>CERRAR SESIÓN</KlinoText>
+          <KlinoText variant="label" color={KLINO_COLORS.error} style={{ fontWeight: 'bold' }}>CERRAR SESIÓN</KlinoText>
         </TouchableOpacity>
 
         {/* FOOTER */}

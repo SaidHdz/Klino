@@ -344,9 +344,41 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
               pId = folderKeyMap[pId];
             }
             if (!syncedNotes[pId]) syncedNotes[pId] = [];
-            const existingIdx = syncedNotes[pId].findIndex(n => n.id === note.id);
-            if (existingIdx === -1) syncedNotes[pId] = [note, ...syncedNotes[pId]];
-            else syncedNotes[pId][existingIdx] = note;
+
+            // Buscar si ya existe localmente esta nota (por ID) en CUALQUIER perfil
+            let existingIdx = syncedNotes[pId].findIndex(n => n.id === note.id);
+            let existingPId = pId;
+            if (existingIdx === -1) {
+              // Buscar en todos los perfiles por si el folder_id difiere
+              for (const [otherPId, otherNotes] of Object.entries(syncedNotes)) {
+                const idx = (otherNotes as any[]).findIndex((n: any) => n.id === note.id);
+                if (idx !== -1) {
+                  existingIdx = idx;
+                  existingPId = otherPId;
+                  break;
+                }
+              }
+            }
+
+            if (existingIdx !== -1) {
+              // Si la nota ya existe, PRESERVAR el nombre local para no crear duplicados
+              const localName = (syncedNotes[existingPId] as any[])[existingIdx].name;
+              note.name = localName;
+              (syncedNotes[existingPId] as any[])[existingIdx] = note;
+            } else {
+              // Nota nueva de Supabase: buscar si hay un paciente local con nombre similar
+              // para agrupar correctamente (evitar "Fernando Salas" vs "Fernando Salas García")
+              const allLocalNames = Object.values(syncedNotes).flat().map((n: any) => (n.name || '').trim());
+              const matchedName = allLocalNames.find(
+                localName => localName.toLowerCase() === formattedPatientName.trim().toLowerCase()
+                  || localName.toLowerCase().startsWith(formattedPatientName.trim().toLowerCase())
+                  || formattedPatientName.trim().toLowerCase().startsWith(localName.toLowerCase())
+              );
+              if (matchedName) {
+                note.name = matchedName;
+              }
+              syncedNotes[pId] = [note, ...syncedNotes[pId]];
+            }
           });
           return syncedNotes;
         });
@@ -374,9 +406,9 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
           if (parsed.notificationsList) setNotificationsList(parsed.notificationsList);
           if (parsed.savedSignature) setSavedSignature(parsed.savedSignature);
           if (parsed.notes) {
-            // Forzar inyección de nota de prueba si está vacío
-            if (!parsed.notes['1'] || parsed.notes['1'].length === 0) {
-              parsed.notes['1'] = INITIAL_NOTES['1'];
+            // Inicializar vacío si no existe
+            if (!parsed.notes['1']) {
+              parsed.notes['1'] = [];
             }
             setNotes(parsed.notes);
           }
@@ -471,14 +503,25 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
     // Generar notificación al agregar nota
     if (appSettings.notifications.patients) {
+      const hora = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const tipoNota = note.specialty || 'Nota General';
+      
+      let extraInfo = '';
+      if (note.clinicalData?.impresion_diagnostica) {
+        extraInfo = `Diagnóstico: ${note.clinicalData.impresion_diagnostica}`;
+      } else if (note.vitals?.peso) {
+        extraInfo = `Peso: ${note.vitals.peso}kg, Temp: ${note.vitals.temp}°C`;
+      }
+
       addNotification({
-        title: 'Nueva nota clínica',
-        description: `Se ha guardado una nueva nota para ${note.name || 'Paciente Nuevo'}. El resumen general de su expediente ha sido actualizado.`,
+        title: `Nueva ${tipoNota} - ${hora}`,
+        description: `Paciente: ${note.name || 'Paciente Nuevo'}`,
         time: new Date().toISOString(),
         type: 'patient',
         icon: 'FileText',
         color: profile === 'General' ? '#1B4F9B' : '#2A7D6F',
-        unread: true
+        unread: true,
+        message: extraInfo || 'Lista para revisión y firma.'
       });
     }
   };
@@ -518,6 +561,16 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       if (name) updates.patient_name = name;
       await supabase.from('clinical_records').update(updates).eq('id', noteId);
     } catch (e) { console.error("Error actualizando en Supabase", e); }
+  };
+
+  const updateNoteVitals = async (profileId: string, noteId: string, vitals: any) => {
+    setNotes(prev => ({
+      ...prev,
+      [profileId]: (prev[profileId] || []).map(n => n.id === noteId ? { ...n, vitals } : n)
+    }));
+    try {
+      await supabase.from('clinical_records').update({ vitals_data: vitals }).eq('id', noteId);
+    } catch (e) { console.error("Error actualizando vitals en Supabase", e); }
   };
 
   const updatePatientName = async (profileId: string, oldName: string, newName: string) => {
@@ -595,7 +648,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       profileImage, setProfileImage, userId, dashboardProfileId, setDashboardProfileId,
       recordsProfileId, setRecordsProfileId, intelligenceModes, updateIntelligenceMode,
       deleteIntelligenceMode, addIntelligenceMode, notes, confirmNote, addNote,
-      deleteNote, deleteMultipleNotes, updateNoteContent, updatePatientName, syncWithCloud, isSyncing, appSettings,
+      deleteNote, deleteMultipleNotes, updateNoteContent, updateNoteVitals, updatePatientName, syncWithCloud, isSyncing, appSettings,
       updateSettings, notificationsList, markNotificationRead, deleteNotification,
       clearAllNotifications, addNotification, savedSignature, setSavedSignature,
       resetProfile, logout

@@ -12,29 +12,35 @@ export default function LiveConsultationScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const folderParam = (params.folder as string) || 'consulta_general';
-  const forcedPatientName = params.patientName as string | undefined;
+  
+  // expo-router can pass params as arrays, ensure it's always a string
+  const rawPatientName = params.patientName;
+  const forcedPatientName = (Array.isArray(rawPatientName) ? rawPatientName[0] : (rawPatientName as string | undefined))?.trim();
 
-  const { addNote, dashboardProfileId, recordsProfileId } = useProfile();
+  const { addNote, dashboardProfileId, recordsProfileId, notes } = useProfile();
   
   const [seconds, setSeconds] = useState(0);
   const [isFinishing, setIsFinishing] = useState(false);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const recordingRef = React.useRef<Audio.Recording | null>(null);
+  const isMountedRef = React.useRef(true);
   const [metering, setMetering] = useState<number[]>(Array(30).fill(10));
 
   useEffect(() => {
     startRecording();
     return () => {
+      isMountedRef.current = false;
       stopRecording();
     };
   }, []);
 
   const stopRecording = async () => {
-    if (recording) {
+    if (recordingRef.current) {
       try {
-        await recording.stopAndUnloadAsync();
+        await recordingRef.current.stopAndUnloadAsync();
       } catch (e) {
         // ignore errors on cleanup
       }
+      recordingRef.current = null;
     }
   };
 
@@ -46,10 +52,15 @@ export default function LiveConsultationScreen() {
         playsInSilentModeIOS: true,
       });
 
+      // Asegurarnos de detener cualquier grabación anterior colgada
+      if (recordingRef.current) {
+        await stopRecording();
+      }
+
       const { recording: newRecording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY,
         (status) => {
-          if (status.isRecording) {
+          if (status.isRecording && isMountedRef.current) {
             setSeconds(Math.floor(status.durationMillis / 1000));
             if (status.metering !== undefined) {
                const base = status.metering + 160; 
@@ -63,10 +74,18 @@ export default function LiveConsultationScreen() {
         },
         100 
       );
-      setRecording(newRecording);
+      
+      if (!isMountedRef.current) {
+        await newRecording.stopAndUnloadAsync();
+        return;
+      }
+      
+      recordingRef.current = newRecording;
     } catch (err) {
       console.error('Fallo al iniciar grabacion', err);
-      Alert.alert('Permisos requeridos', 'No se pudo acceder al micrófono');
+      if (isMountedRef.current) {
+        Alert.alert('Permisos requeridos', 'No se pudo acceder al micrófono o hay otra aplicación usándolo.');
+      }
     }
   };
 
@@ -81,13 +100,17 @@ export default function LiveConsultationScreen() {
     setIsFinishing(true);
 
     let audioUri = '';
-    if (recording) {
+    if (recordingRef.current) {
       try {
-        await recording.stopAndUnloadAsync();
-        audioUri = recording.getURI() || '';
+        const status = await recordingRef.current.getStatusAsync();
+        if (status.canRecord) {
+          await recordingRef.current.stopAndUnloadAsync();
+        }
+        audioUri = recordingRef.current.getURI() || '';
       } catch (e) {
         console.error('Error al detener audio:', e);
       }
+      recordingRef.current = null;
     }
 
     try {
@@ -116,6 +139,43 @@ export default function LiveConsultationScreen() {
          formData.append('audio', audioFile);
          formData.append('profileId', n8nProfileId);
          formData.append('folder', folderParam);
+         
+         if (forcedPatientName) {
+           formData.append('patientName', forcedPatientName);
+           // Intentar buscar la nota anterior para darle contexto a la IA
+           const allNotes = Object.values(notes || {}).flat();
+           const patientNotes = allNotes
+             .filter(n => n.name === forcedPatientName)
+             .sort((a, b) => Number(b.time) - Number(a.time));
+             
+           if (patientNotes.length > 0) {
+             const lastNote = patientNotes[0];
+             let previousContext = `Última nota (${new Date(Number(lastNote.time)).toLocaleDateString()}):\n`;
+             if (lastNote.clinicalData?.impresion_diagnostica) previousContext += `Diagnóstico previo: ${lastNote.clinicalData.impresion_diagnostica}\n`;
+             if (lastNote.clinicalData?.plan) previousContext += `Tratamiento previo: ${lastNote.clinicalData.plan}\n`;
+             if (lastNote.clinicalData?.alergias) previousContext += `ALERGIAS: ${lastNote.clinicalData.alergias}\n`;
+             
+             // Agregar signos vitales previos
+             if (lastNote.vitals) {
+               const v = lastNote.vitals;
+               const vitalsArr = [];
+               if (v.peso) vitalsArr.push(`Peso: ${v.peso}kg`);
+               if (v.talla) vitalsArr.push(`Talla: ${v.talla}m`);
+               if (v.temp) vitalsArr.push(`Temp: ${v.temp}°C`);
+               if (v.ta) vitalsArr.push(`TA: ${v.ta}`);
+               if (v.fc) vitalsArr.push(`FC: ${v.fc}`);
+               if (vitalsArr.length > 0) {
+                 previousContext += `Signos vitales previos: ${vitalsArr.join(', ')}\n`;
+               }
+             }
+             
+             // Si no hay campos estructurados específicos, mandar parte de la transcripción
+             if (!lastNote.clinicalData?.plan) {
+               previousContext += `\nResumen previo:\n${lastNote.transcription?.substring(0, 500)}...`;
+             }
+             formData.append('previousNoteContext', previousContext);
+           }
+         }
 
          const webhookUrl = process.env.EXPO_PUBLIC_N8N_WEBHOOK_URL || 'https://n8n.srv1574981.hstgr.cloud/webhook/Klino/upload-audio';
          

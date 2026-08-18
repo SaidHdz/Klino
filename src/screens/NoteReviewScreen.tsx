@@ -104,83 +104,46 @@ export default function NoteReviewScreen() {
           Exp. KL-{note?.id?.slice(0,4) || '0192'} · Consultorio · {approved ? 'Aprobada' : 'toca el texto para corregir'}
         </KlinoText>
 
-        <TextInput
-          multiline
-          value={text}
-          onChangeText={setText}
-          editable={!approved}
-          style={{
-            fontFamily: KLINO_FONTS.bodyRegular,
-            fontSize: 17,
-            lineHeight: 17 * 1.62,
-            color: KLINO_COLORS.tinta,
-            marginBottom: 32,
-            textAlignVertical: 'top',
-          }}
-        />
+        <View style={{ marginBottom: 32 }}>
+          {(() => {
+            if (!text.includes('**')) {
+              return (
+                <KlinoText variant="body" style={{ fontSize: 17, lineHeight: 17 * 1.62, fontFamily: KLINO_FONTS.bodyRegular }}>
+                  {text}
+                </KlinoText>
+              );
+            }
+            const parts = text.split(/(\*\*.*?\*\*)/g);
+            return parts.map((part: string, index: number) => {
+              if (part.startsWith('**') && part.endsWith('**')) {
+                const title = part.slice(2, -2).replace(/:$/, '').trim();
+                return (
+                  <View key={index} style={{ marginTop: index > 0 ? 16 : 0, marginBottom: 2 }}>
+                    <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 1.5, fontWeight: 'bold' }}>
+                      {title}
+                    </KlinoText>
+                  </View>
+                );
+              }
+              const bodyText = part.trim();
+              if (!bodyText) return null;
+              return (
+                <KlinoText key={index} variant="body" style={{ fontSize: 17, lineHeight: 17 * 1.62, fontFamily: KLINO_FONTS.bodyRegular, marginBottom: 16 }}>
+                  {bodyText}
+                </KlinoText>
+              );
+            });
+          })()}
+        </View>
 
         {/* BLOQUE DE RECETA VINCULADA */}
         {(() => {
           const parts = text.split(/PLAN:|plan:/i);
           const planText = parts.length > 1 ? parts[1].trim() : '';
           
-          const generatePDF = async () => {
-            const html = `
-              <html>
-                <head>
-                  <style>
-                    body { font-family: 'Helvetica', sans-serif; color: #1E1F1A; padding: 40px; }
-                    .header { display: flex; justify-content: space-between; border-bottom: 2px solid #2A7D6F; padding-bottom: 20px; margin-bottom: 40px; }
-                    .logo { font-size: 24px; font-weight: bold; color: #2A7D6F; letter-spacing: 2px; }
-                    .dr-info { text-align: right; font-size: 14px; color: #737365; }
-                    h1 { font-size: 20px; font-weight: bold; margin-bottom: 24px; }
-                    .section { margin-bottom: 30px; }
-                    .label { font-size: 12px; color: #737365; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
-                    .content { font-size: 16px; line-height: 1.6; white-space: pre-wrap; }
-                    .footer { margin-top: 50px; border-top: 1px solid #DFDBD3; padding-top: 20px; font-size: 12px; color: #737365; text-align: center; }
-                    .signature-box { width: 200px; border-bottom: 1px solid #1E1F1A; margin: 40px auto 10px; }
-                  </style>
-                </head>
-                <body>
-                  <div class="header">
-                    <div class="logo">KLINO</div>
-                    <div class="dr-info">
-                      <strong>${doctorName || 'Dr. Médico'}</strong><br>
-                      ${appSettings?.cedula ? 'Cédula: ' + appSettings.cedula : 'Cédula profesional en trámite'}<br>
-                    </div>
-                  </div>
-                  
-                  <div class="section">
-                    <div class="label">PACIENTE</div>
-                    <div class="content"><strong>${note?.name || 'Paciente'}</strong><br>Fecha: ${new Date().toLocaleDateString('es-MX')}</div>
-                  </div>
-                  
-                  <div class="section">
-                    <div class="label">PLAN E INDICACIONES MÉDICAS</div>
-                    <div class="content">${planText}</div>
-                  </div>
-                  
-                  <div class="signature-box"></div>
-                  <div style="text-align: center; font-size: 14px;">Firma del Médico</div>
-                  
-                  <div class="footer">
-                    Documento generado por Klino - Cumplimiento NOM-004-SSA3-2012
-                  </div>
-                </body>
-              </html>
-            `;
-            try {
-              const { uri } = await Print.printToFileAsync({ html });
-              await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
-            } catch (e) {
-              console.error(e);
-              Alert.alert('Error', 'No se pudo generar el PDF');
-            }
-          };
-
           return planText ? (
             <TouchableOpacity 
-              onPress={generatePDF}
+              onPress={() => router.push(`/prescription-preview?id=${note?.id}&profileId=${profileId}`)}
               style={{ borderWidth: 1, borderColor: KLINO_COLORS.borderStrong, padding: 16, backgroundColor: KLINO_COLORS.papelHondo }}
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>

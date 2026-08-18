@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { View, ScrollView, TouchableOpacity, SafeAreaView, Platform, Switch } from 'react-native';
-import { ArrowLeft, ArrowRight, ShieldCheck } from 'lucide-react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
+import { ArrowLeft, ArrowRight, ShieldCheck, KeyRound, Fingerprint } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { KLINO_COLORS } from '../constants/theme';
 import { KlinoText } from '../components/common/KlinoText';
+import { KlinoSwitch } from '../components/common/KlinoSwitch';
 
 export default function SecurityScreen() {
   const router = useRouter();
@@ -31,9 +32,9 @@ export default function SecurityScreen() {
           title="Entrar con huella" 
           desc="Sin escribir contraseña" 
           value={huellaAcceso} 
-          onToggle={() => {
+          onToggle={(val: boolean) => {
             Haptics.selectionAsync();
-            setHuellaAcceso(!huellaAcceso);
+            setHuellaAcceso(val);
           }} 
         />
         
@@ -41,9 +42,9 @@ export default function SecurityScreen() {
           title="Huella para desbloquear edición" 
           desc="Se pide al editar un documento aprobado" 
           value={huellaEdicion} 
-          onToggle={() => {
+          onToggle={(val: boolean) => {
             Haptics.selectionAsync();
-            setHuellaEdicion(!huellaEdicion);
+            setHuellaEdicion(val);
           }} 
         />
         
@@ -93,23 +94,7 @@ const ToggleItem = ({ title, desc, value, onToggle }: any) => (
       <KlinoText variant="body" style={{ fontSize: 18, marginBottom: 4 }}>{title}</KlinoText>
       <KlinoText variant="small" color={KLINO_COLORS.gris}>{desc}</KlinoText>
     </View>
-    <TouchableOpacity 
-      activeOpacity={0.8}
-      onPress={onToggle} 
-      style={{ 
-        width: 50, 
-        height: 28, 
-        backgroundColor: value ? KLINO_COLORS.verde : KLINO_COLORS.papel, 
-        borderWidth: 1, 
-        borderColor: KLINO_COLORS.tinta, 
-        flexDirection: 'row', 
-        padding: 2, 
-        alignItems: 'center', 
-        justifyContent: value ? 'flex-end' : 'flex-start' 
-      }}
-    >
-      <View style={{ width: 22, height: 22, backgroundColor: KLINO_COLORS.papel, borderWidth: 1, borderColor: KLINO_COLORS.tinta }} />
-    </TouchableOpacity>
+    <KlinoSwitch value={value} onValueChange={onToggle} />
   </View>
 );
 

@@ -30,8 +30,10 @@ export default function RecordsScreen() {
 
   const sortedNotes = [...currentNotes].sort((a, b) => Number(b.time) - Number(a.time));
   
-  // Deduplicar pacientes por nombre
-  const uniquePatients = Array.from(new Map(sortedNotes.map(n => [n.name, n])).values());
+  // Deduplicar pacientes por nombre (limpiando espacios)
+  const uniquePatients = Array.from(
+    new Map(sortedNotes.map(n => [(n.name || '').trim().toLowerCase(), { ...n, name: (n.name || '').trim() }])).values()
+  );
 
   const filteredPatients = uniquePatients.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
@@ -42,11 +44,11 @@ export default function RecordsScreen() {
   };
 
   const hasPendingDocs = (patientName: string) => {
-    return sortedNotes.some(n => n.name === patientName && n.status === 'pending');
+    return sortedNotes.some(n => (n.name || '').trim().toLowerCase() === patientName.trim().toLowerCase() && n.status === 'pending');
   };
 
   const getDocsCount = (patientName: string) => {
-    return sortedNotes.filter(n => n.name === patientName).length;
+    return sortedNotes.filter(n => (n.name || '').trim().toLowerCase() === patientName.trim().toLowerCase()).length;
   };
 
   const handleDeletePatient = (patientName: string) => {
@@ -60,7 +62,7 @@ export default function RecordsScreen() {
           style: "destructive",
           onPress: () => {
              Object.keys(notes).forEach(profileId => {
-               const patientNoteIds = notes[profileId].filter(n => n.name === patientName).map(n => n.id);
+               const patientNoteIds = notes[profileId].filter(n => (n.name || '').trim().toLowerCase() === patientName.trim().toLowerCase()).map(n => n.id);
                if (patientNoteIds.length > 0) {
                  deleteMultipleNotes(profileId, patientNoteIds);
                }
@@ -166,7 +168,7 @@ export default function RecordsScreen() {
                 <View style={{ flex: 1 }}>
                   <KlinoText variant="body" style={{ fontWeight: 'bold', marginBottom: 2 }}>{p.name}</KlinoText>
                   <KlinoText variant="small" color={KLINO_COLORS.gris}>
-                    34 años · {getDocsCount(p.name)} documentos · hoy
+                    {getDocsCount(p.name)} {getDocsCount(p.name) === 1 ? 'documento' : 'documentos'} · {new Date(Number(p.time)).toLocaleDateString()}
                   </KlinoText>
                 </View>
               </View>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, SafeAreaView, TouchableOpacity, ScrollView, Platform, StyleSheet, TextInput, BackHandler } from 'react-native';
-import { ArrowLeft, Search, AlertTriangle, ChevronDown, Mic, Pencil, Lock } from 'lucide-react-native';
+import { ArrowLeft, Search, AlertTriangle, ChevronDown, Mic, Pencil, Lock, Check } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { KLINO_COLORS } from '../constants/theme';
 import { KlinoText } from '../components/common/KlinoText';
@@ -20,6 +20,14 @@ export default function PatientTimelineScreen() {
   
   const { notes, recordsProfileId, updatePatientName } = useProfile();
   const [currentName, setCurrentName] = useState(initialPatientName);
+  
+  // Sync currentName when route params change (expo-router screen reuse)
+  useEffect(() => {
+    if (initialPatientName !== currentName) {
+      setCurrentName(initialPatientName);
+    }
+  }, [initialPatientName]);
+
   const [dictationModalVisible, setDictationModalVisible] = useState(false);
   
   // Obtener todas las notas del paciente seleccionado
@@ -27,7 +35,7 @@ export default function PatientTimelineScreen() {
     ? (notes[recordsProfileId] || []).map(n => ({ ...n, profileId: recordsProfileId })) 
     : Object.entries(notes || {}).flatMap(([pId, pNotes]) => (pNotes || []).map((n: any) => ({ ...n, profileId: pId })));
     
-  const rawPatientNotes = currentNotes.filter(n => n.name === currentName);
+  const rawPatientNotes = currentNotes.filter(n => (n.name || '').trim().toLowerCase() === (currentName || '').trim().toLowerCase());
   const patientNotesMap = new Map();
   const transcriptionsSet = new Set();
 
@@ -36,6 +44,9 @@ export default function PatientTimelineScreen() {
     const isDuplicateText = textContent.length > 10 && transcriptionsSet.has(textContent);
     
     if (!patientNotesMap.has(n.id) && !isDuplicateText) {
+      // Omitir notas vacías que no estén pendientes de procesar
+      if (textContent.length === 0 && n.status !== 'pending') return;
+
       patientNotesMap.set(n.id, n);
       if (textContent.length > 10) {
         transcriptionsSet.add(textContent);
@@ -147,9 +158,9 @@ export default function PatientTimelineScreen() {
         {activeTab === 'Resumen' && <ResumenTab router={router} notes={patientNotes} patientName={currentName} onDictarPress={() => setDictationModalVisible(true)} />}
         {activeTab === 'Historia clínica' && <HistoriaClinicaTab notes={patientNotes} />}
         {activeTab === 'Notas de evolución' && <NotasEvolucionTab notes={patientNotes} router={router} patientName={currentName} onDictarPress={() => setDictationModalVisible(true)} />}
-        {activeTab === 'Labs e imagen' && <LabsImagenTab />}
+        {activeTab === 'Labs e imagen' && <LabsImagenTab notes={patientNotes} />}
         {activeTab === 'Indicaciones' && <IndicacionesTab notes={patientNotes} router={router} patientName={currentName} onDictarPress={() => setDictationModalVisible(true)} />}
-        {activeTab === 'Referencia' && <ReferenciaTab />}
+        {activeTab === 'Referencia' && <ReferenciaTab notes={patientNotes} />}
         {activeTab === 'Recetas' && <RecetasTab notes={patientNotes} router={router} patientName={currentName} onDictarPress={() => setDictationModalVisible(true)} />}
       </ScrollView>
 
@@ -172,12 +183,32 @@ const ResumenTab = ({ router, notes, patientName, onDictarPress }: any) => {
     return null;
   };
 
-  const vitals = {
-    ta: getLatestVital('ta'),
-    fc: getLatestVital('fc'),
-    peso: getLatestVital('peso'),
-    imc: getLatestVital('imc'),
-    temp: getLatestVital('temp'),
+  const { updateNoteVitals, recordsProfileId } = useProfile();
+  const [isEditingVitals, setIsEditingVitals] = useState(false);
+  
+  const getLatestNoteIdWithVitals = () => {
+    for (const note of notes || []) {
+      return note.id; // Just return the most recent note to save vitals to
+    }
+    return null;
+  };
+
+  const [localVitals, setLocalVitals] = useState({
+    ta: getLatestVital('ta') || '',
+    fc: getLatestVital('fc') || '',
+    peso: getLatestVital('peso') || '',
+    imc: getLatestVital('imc') || '',
+    temp: getLatestVital('temp') || '',
+  });
+
+  const toggleEditVitals = () => {
+    if (isEditingVitals) {
+      const noteId = getLatestNoteIdWithVitals();
+      if (noteId) {
+        updateNoteVitals(recordsProfileId || '1', noteId, localVitals);
+      }
+    }
+    setIsEditingVitals(!isEditingVitals);
   };
 
   // Diagnósticos
@@ -199,21 +230,83 @@ const ResumenTab = ({ router, notes, patientName, onDictarPress }: any) => {
       latestTreatment = n.clinicalData.plan;
       break;
     }
-    const match = n.transcription?.match(/PLAN(?: TERAPÉUTICO)?:\s*([\s\S]+?)(?=\*\*|$)/i);
+    const match = n.transcription?.match(/PLAN(?: TERAPÉUTICO)?(?: Y RECETA)?:\s*([\s\S]+?)(?=\n\n\*\*|\n\n[A-Z\s]+:|$)/i);
     if (match) {
       latestTreatment = match[1].trim();
       break;
     }
   }
 
+  // Alergias
+  const allAllergies = (notes || []).map((n: any) => {
+    if (n.clinicalData?.alergias) return n.clinicalData.alergias;
+    const match = n.transcription?.match(/(?:ALERGIAS|ANTECEDENTES ALÉRGICOS|ALERGIA|ALERGICOS)[^:]*:\s*([\s\S]+?)(?=\n\n|\*\*|\n[A-Z])/i);
+    if (match) {
+      const text = match[1].replace(/\*\*/g, '').trim();
+      if (text.toLowerCase() !== 'negados' && text.toLowerCase() !== 'no' && text.toLowerCase() !== 'ninguna') {
+        return text;
+      }
+    }
+    return null;
+  }).filter(Boolean);
+  const uniqueAllergies = Array.from(new Set(allAllergies));
+
   return (
     <View style={{ padding: 24 }}>
+      {/* ALERGIAS (solo si hay) */}
+      {uniqueAllergies.length > 0 && (
+        <View style={{ marginBottom: 32, padding: 16, backgroundColor: 'rgba(176, 49, 31, 0.05)', borderWidth: 1, borderColor: KLINO_COLORS.error }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+            <AlertTriangle size={20} color={KLINO_COLORS.error} strokeWidth={2} style={{ marginRight: 16, marginTop: 2 }} />
+            <View style={{ flex: 1 }}>
+              <KlinoText variant="label" color={KLINO_COLORS.error} style={{ fontWeight: 'bold', letterSpacing: 2, marginBottom: 4 }}>ALERGIAS</KlinoText>
+              {uniqueAllergies.map((alergia: any, idx: number) => (
+                <KlinoText key={idx} variant="body" color={KLINO_COLORS.tinta} style={{ fontSize: 16, lineHeight: 24 }}>
+                  {alergia}
+                </KlinoText>
+              ))}
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* SIGNOS VITALES GRID */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <SectionTitle title="SIGNOS VITALES" />
+      </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', borderWidth: 1, borderColor: KLINO_COLORS.borderStrong, marginBottom: 32 }}>
-        <GridCell label="PRESIÓN" value={vitals.ta || '--/--'} sub="última consulta" isRight />
-        <GridCell label="FREC. CARDÍACA" value={vitals.fc || '--'} sub="lpm" isBottom />
-        <GridCell label="PESO / IMC" value={vitals.peso || '--'} sub={vitals.imc ? `IMC ${vitals.imc}` : 'kg'} isRight isBottom />
-        <GridCell label="TEMP." value={vitals.temp || '--'} sub="°C" isBottom />
+        <GridCell 
+          label="PRESIÓN" 
+          value={localVitals.ta || '--/--'} 
+          sub="última consulta" 
+          isEditing={isEditingVitals}
+          onChange={(val: string) => setLocalVitals({...localVitals, ta: val})}
+        />
+        <GridCell 
+          label="FREC. CARDÍACA" 
+          value={localVitals.fc || '--'} 
+          sub="lpm" 
+          isRight
+          isEditing={isEditingVitals}
+          onChange={(val: string) => setLocalVitals({...localVitals, fc: val})}
+        />
+        <GridCell 
+          label="PESO / IMC" 
+          value={localVitals.peso || '--'} 
+          sub={localVitals.imc ? `IMC ${localVitals.imc}` : 'kg'} 
+          isBottom 
+          isEditing={isEditingVitals}
+          onChange={(val: string) => setLocalVitals({...localVitals, peso: val})}
+        />
+        <GridCell 
+          label="TEMP." 
+          value={localVitals.temp || '--'} 
+          sub="°C" 
+          isRight
+          isBottom 
+          isEditing={isEditingVitals}
+          onChange={(val: string) => setLocalVitals({...localVitals, temp: val})}
+        />
       </View>
 
       {/* DIAGNÓSTICOS HISTÓRICOS */}
@@ -233,10 +326,18 @@ const ResumenTab = ({ router, notes, patientName, onDictarPress }: any) => {
 
       {/* TRATAMIENTO ACTUAL */}
       <SectionTitle title="TRATAMIENTO ACTUAL" />
-      <View style={{ marginBottom: 32, padding: 16, backgroundColor: KLINO_COLORS.papelHondo, borderRadius: 8 }}>
-        <KlinoText variant="body" style={{ fontSize: 16, lineHeight: 24 }}>
-          {latestTreatment || 'No hay tratamientos recientes registrados.'}
-        </KlinoText>
+      <View style={{ marginBottom: 32 }}>
+        {!latestTreatment ? (
+          <View style={{ padding: 16, backgroundColor: KLINO_COLORS.papelHondo, borderRadius: 8 }}>
+            <KlinoText variant="body" style={{ fontSize: 16, lineHeight: 24 }}>No hay tratamientos recientes registrados.</KlinoText>
+          </View>
+        ) : (
+          <View style={{ padding: 16, backgroundColor: KLINO_COLORS.papelHondo, borderWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
+            <KlinoText variant="body" style={{ fontSize: 18, lineHeight: 28 }}>
+              {latestTreatment.replace(/\*\*/g, '').trim()}
+            </KlinoText>
+          </View>
+        )}
       </View>
 
       {/* ÚLTIMAS NOTAS */}
@@ -247,6 +348,7 @@ const ResumenTab = ({ router, notes, patientName, onDictarPress }: any) => {
             <ListItem 
               left={n.specialty || 'Consulta General'} 
               right={new Date(Number(n.time)).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })} 
+              unapproved={n.status !== 'reviewed'}
             />
           </TouchableOpacity>
         ))}
@@ -324,9 +426,38 @@ const HistoriaClinicaTab = ({ notes }: any) => {
             style={{ fontSize: 17, lineHeight: 28, fontFamily: 'serif', color: KLINO_COLORS.tinta, minHeight: 300, textAlignVertical: 'top' }}
           />
         ) : (
-          <KlinoText variant="body" style={{ fontSize: 17, lineHeight: 28, fontFamily: 'serif' }}>
-            {latestNote.transcription || latestNote.rawTranscription || 'Nota vacía.'}
-          </KlinoText>
+          <View>
+            {(() => {
+              const text = latestNote.transcription || latestNote.rawTranscription || 'Nota vacía.';
+              if (!text.includes('**')) {
+                return (
+                  <KlinoText variant="body" style={{ fontSize: 17, lineHeight: 28, fontFamily: 'serif' }}>
+                    {text}
+                  </KlinoText>
+                );
+              }
+              const parts = text.split(/(\*\*.*?\*\*)/g);
+              return parts.map((part: string, index: number) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                  const title = part.slice(2, -2).replace(/:$/, '').trim();
+                  return (
+                    <View key={index} style={{ marginTop: index > 0 ? 16 : 0, marginBottom: 2 }}>
+                      <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 1.5, fontWeight: 'bold' }}>
+                        {title}
+                      </KlinoText>
+                    </View>
+                  );
+                }
+                const bodyText = part.trim();
+                if (!bodyText) return null;
+                return (
+                  <KlinoText key={index} variant="body" style={{ fontSize: 17, lineHeight: 28, fontFamily: 'serif', marginBottom: 16 }}>
+                    {bodyText}
+                  </KlinoText>
+                );
+              });
+            })()}
+          </View>
         )}
 
         {latestNote && (
@@ -365,45 +496,34 @@ const NotasEvolucionTab = ({ notes, router, patientName, onDictarPress }: any) =
   </View>
 );
 
-const LabsImagenTab = () => (
-  <View>
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
-      <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>LABORATORIOS E IMAGEN</KlinoText>
-      <KlinoText variant="label" color={KLINO_COLORS.verde} style={{ fontWeight: 'bold', letterSpacing: 1 }}>ESCANEAR</KlinoText>
-    </View>
-    <View style={{ flexDirection: 'row', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
-      <View style={{ width: 48, height: 60, backgroundColor: KLINO_COLORS.papelHondo, borderWidth: 1, borderColor: KLINO_COLORS.borderStrong, marginRight: 16 }} />
-      <View>
-        <KlinoText variant="body" style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 4 }}>Química sanguínea</KlinoText>
-        <KlinoText variant="small" color={KLINO_COLORS.gris}>18 abr · escaneado · 2 hojas</KlinoText>
+const LabsImagenTab = ({ notes }: any) => {
+  const docs = notes?.filter((n: any) => n.pdfUri) || [];
+  
+  return (
+    <View>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
+        <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>LABORATORIOS E IMAGEN</KlinoText>
+        <KlinoText variant="label" color={KLINO_COLORS.verde} style={{ fontWeight: 'bold', letterSpacing: 1 }}>ESCANEAR</KlinoText>
       </View>
+      
+      {docs.length > 0 ? (
+        docs.map((doc: any, i: number) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
+            <View style={{ width: 48, height: 60, backgroundColor: KLINO_COLORS.papelHondo, borderWidth: 1, borderColor: KLINO_COLORS.borderStrong, marginRight: 16 }} />
+            <View>
+              <KlinoText variant="body" style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 4 }}>Documento Adjunto</KlinoText>
+              <KlinoText variant="small" color={KLINO_COLORS.gris}>{new Date(Number(doc.time)).toLocaleDateString()}</KlinoText>
+            </View>
+          </View>
+        ))
+      ) : (
+        <View style={{ padding: 24 }}>
+          <KlinoText variant="body" color={KLINO_COLORS.gris}>No hay documentos, laboratorios ni imágenes en este expediente.</KlinoText>
+        </View>
+      )}
     </View>
-    <View style={{ flexDirection: 'row', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
-      <View style={{ width: 48, height: 60, backgroundColor: KLINO_COLORS.tinta, marginRight: 16 }} />
-      <View>
-        <KlinoText variant="body" style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 4 }}>Radiografía de tórax</KlinoText>
-        <KlinoText variant="small" color={KLINO_COLORS.gris}>3 mar · sin hallazgos</KlinoText>
-      </View>
-    </View>
-    
-    <View style={{ padding: 24 }}>
-      <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2, marginBottom: 24 }}>TENDENCIA DE HBA1C</KlinoText>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 120, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong, paddingHorizontal: 16 }}>
-        <Bar value="7.8" height={100} />
-        <Bar value="7.4" height={80} />
-        <Bar value="7.1" height={70} />
-        <Bar value="6.9" height={60} active />
-      </View>
-    </View>
-  </View>
-);
-
-const Bar = ({ value, height, active }: any) => (
-  <View style={{ alignItems: 'center' }}>
-    <View style={{ width: 60, height, backgroundColor: active ? KLINO_COLORS.verde : KLINO_COLORS.papelHondo, borderWidth: active ? 0 : 1, borderColor: KLINO_COLORS.borderStrong }} />
-    <KlinoText variant="small" color={active ? KLINO_COLORS.verde : KLINO_COLORS.gris} style={{ marginTop: 8 }}>{value}</KlinoText>
-  </View>
-);
+  );
+};
 
 const IndicacionesTab = ({ notes, router, patientName, onDictarPress }: any) => {
   const indicaciones = notes?.filter((n: any) => n.transcription && n.transcription.toUpperCase().includes('PLAN:'))
@@ -448,15 +568,26 @@ const IndicacionesTab = ({ notes, router, patientName, onDictarPress }: any) => 
   );
 };
 
-const ReferenciaTab = () => (
-  <View>
-    <View style={{ padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
-      <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>NOTAS DE REFERENCIA</KlinoText>
+const ReferenciaTab = ({ notes }: any) => {
+  const referencias = notes?.filter((n: any) => n.transcription && n.transcription.toUpperCase().includes('REFERENCIA')) || [];
+
+  return (
+    <View>
+      <View style={{ padding: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
+        <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2 }}>NOTAS DE REFERENCIA</KlinoText>
+      </View>
+      {referencias.length > 0 ? (
+        referencias.map((ref: any, i: number) => (
+          <RecordItem key={i} date={new Date(Number(ref.time)).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })} status="OK" desc={ref.name + ' - Referencia'} />
+        ))
+      ) : (
+        <View style={{ padding: 24 }}>
+          <KlinoText variant="body" color={KLINO_COLORS.gris}>No hay hojas de referencia en este expediente.</KlinoText>
+        </View>
+      )}
     </View>
-    <RecordItem date="Cardiología" status="2 jul" desc="Envío para valoración de hipertensión de difícil control. Dr. Iván Rueda." />
-    <RecordItem date="Nutrición" status="18 abr" desc="Plan de alimentación para diabetes tipo 2. Contrarreferencia recibida." />
-  </View>
-);
+  );
+};
 
 const RecetasTab = ({ notes, router, patientName, onDictarPress }: any) => {
   // Extract "PLAN" sections from notes
@@ -481,7 +612,7 @@ const RecetasTab = ({ notes, router, patientName, onDictarPress }: any) => {
         </TouchableOpacity>
       </View>
       {recetas.map((r: any) => (
-        <TouchableOpacity key={r.id} onPress={() => router.push(`/note-review?id=${r.id}&profileId=${r.profileId || '1'}`)}>
+        <TouchableOpacity key={r.id} onPress={() => router.push(`/prescription-preview?id=${r.id}&profileId=${r.profileId || '1'}`)}>
           <RecordItem date={new Date(Number(r.time)).toLocaleDateString('es-MX', { day: '2-digit', month: 'long' })} status="OK" desc={r.desc} />
         </TouchableOpacity>
       ))}
@@ -516,17 +647,34 @@ const SectionTitle = ({ title }: { title: string }) => (
   <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 2, marginBottom: 16 }}>{title}</KlinoText>
 );
 
-const GridCell = ({ label, value, sub, isRight, isBottom }: any) => (
+const GridCell = ({ label, value, sub, isRight, isBottom, isEditing, onChange }: any) => (
   <View style={{ width: '50%', padding: 16, borderRightWidth: isRight ? 0 : 1, borderBottomWidth: isBottom ? 0 : 1, borderColor: KLINO_COLORS.borderStrong }}>
     <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 1, marginBottom: 8 }}>{label}</KlinoText>
-    <KlinoText variant="h2" style={{ fontSize: 28, marginBottom: 4 }}>{value}</KlinoText>
+    {isEditing ? (
+      <TextInput
+        value={value === '--' || value === '--/--' ? '' : value}
+        onChangeText={onChange}
+        keyboardType={label === 'PRESIÓN' ? 'default' : 'numeric'}
+        placeholder={value}
+        style={{ fontSize: 28, marginBottom: 4, fontFamily: 'serif', color: KLINO_COLORS.tinta, padding: 0, borderBottomWidth: 1, borderColor: KLINO_COLORS.verde }}
+      />
+    ) : (
+      <KlinoText variant="h2" style={{ fontSize: 28, marginBottom: 4 }}>{value}</KlinoText>
+    )}
     <KlinoText variant="small" color={KLINO_COLORS.gris}>{sub}</KlinoText>
   </View>
 );
 
-const ListItem = ({ left, right }: { left: string, right: string }) => (
-  <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 16, borderTopWidth: 1, borderColor: KLINO_COLORS.borderHairline }}>
-    <KlinoText variant="body" style={{ fontSize: 18 }}>{left}</KlinoText>
+const ListItem = ({ left, right, unapproved }: { left: string, right: string, unapproved?: boolean }) => (
+  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, borderTopWidth: 1, borderColor: KLINO_COLORS.borderHairline }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+      <KlinoText variant="body" style={{ fontSize: 18 }}>{left}</KlinoText>
+      {unapproved && (
+        <View style={{ backgroundColor: KLINO_COLORS.ambar, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 12 }}>
+          <KlinoText variant="label" color={KLINO_COLORS.tinta} style={{ fontWeight: 'bold', fontSize: 10 }}>SIN APROBAR</KlinoText>
+        </View>
+      )}
+    </View>
     <KlinoText variant="small" color={KLINO_COLORS.gris}>{right}</KlinoText>
   </View>
 );

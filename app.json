@@ -4,7 +4,7 @@
     "slug": "SOMA",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/klino-brand-kit/logo/symbol/symbol-verde.png",
+    "icon": "./assets/klino-brand-kit/logo/symbol/symbol-micro-verde.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -20,7 +20,8 @@
           "fetch",
           "remote-notification",
           "bluetooth-central"
-        ]
+        ],
+        "NSFaceIDUsageDescription": "Klino usa Face ID para iniciar sesión de forma rápida y segura."
       }
     },
     "android": {
@@ -31,11 +32,13 @@
       "package": "com.snupi.klino",
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
-        "WAKE_LOCK"
+        "WAKE_LOCK",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
       ]
     },
     "web": {
-      "favicon": "./assets/klino-brand-kit/logo/symbol/symbol-verde.png"
+      "favicon": "./assets/klino-brand-kit/logo/symbol/symbol-micro-verde.png"
     },
     "extra": {
       "eas": {
@@ -53,6 +56,12 @@
             "central"
           ],
           "bluetoothAlwaysPermission": "Klino necesita acceso continuo al Bluetooth para sincronizar datos médicos."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Permite usar Face ID para desbloquear la aplicación."
         }
       ],
       "expo-router"

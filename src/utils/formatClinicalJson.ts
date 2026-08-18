@@ -131,5 +131,37 @@ export function formatClinicalJson(input: string | object): ParsedClinicalData {
     transcription = rawText;
   }
 
+  // Si los vitals siguen vacíos, intentar extraerlos con RegEx desde el texto formateado
+  if (!vitals) {
+    vitals = {} as any;
+    const txt = transcription.toUpperCase();
+    
+    const pesoMatch = txt.match(/PESO[\s:]*(\d+(\.\d+)?)[\s]*(KG|KILOS)?/);
+    if (pesoMatch) vitals!.peso = pesoMatch[1];
+    
+    const tempMatch = txt.match(/TEMP(?:ERATURA)?[\s:]*(\d+(\.\d+)?)[\s]*(C|GRADOS)?/);
+    if (tempMatch) vitals!.temp = tempMatch[1];
+    
+    const satMatch = txt.match(/(?:SAT(?:URACIÓN)?|SPO2|OXIGENACIÓN|SATURACION)[\s:]*(\d+(\.\d+)?)[\s]*%/);
+    if (satMatch) vitals!.sat = satMatch[1];
+
+    const fcMatch = txt.match(/FC|FRECUENCIA CARD(?:I|Í)ACA[\s:]*(\d+)/);
+    if (fcMatch) vitals!.fc = fcMatch[1];
+
+    const taMatch = txt.match(/(?:TA|PRESI(?:O|Ó)N|TENSION)[\s:]*(\d{2,3}\/\d{2,3})/);
+    if (taMatch) vitals!.ta = taMatch[1];
+
+    if (Object.keys(vitals as any).length === 0) vitals = undefined;
+  }
+
+  // Forzar que el campo clínico contenga la alergia si se menciona explícitamente en texto plano pero no viene estructurado
+  const alerMatch = transcription.match(/(?:ALERGIC[OA]|ALERGIA)(?: A LA| AL| A)?\s+([A-Za-z\s]+)/i);
+  if (alerMatch && !transcription.includes('ANTECEDENTES PERSONALES PATOLÓGICOS:')) {
+     const alergiaDetectada = alerMatch[1].trim();
+     if (alergiaDetectada.length > 3) {
+       transcription += `\n\n**ANTECEDENTES PERSONALES PATOLÓGICOS:**\nALERGIAS: ${alergiaDetectada}`;
+     }
+  }
+
   return { paciente, transcription, vitals, rawText };
 }

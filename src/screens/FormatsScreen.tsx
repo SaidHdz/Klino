@@ -87,95 +87,47 @@ export default function FormatsScreen() {
         <TouchableOpacity 
           activeOpacity={0.8}
           onPress={handleCancel}
-          style={{ flex: 1, backgroundColor: activeTab === 'ver' ? KLINO_COLORS.verde : KLINO_COLORS.papel, paddingVertical: 16, alignItems: 'center', borderRightWidth: 1, borderColor: KLINO_COLORS.borderStrong }}
+          style={{ flex: 1, backgroundColor: activeTab === 'ver' ? KLINO_COLORS.verde : KLINO_COLORS.papel, paddingVertical: 16, alignItems: 'center', borderRightWidth: 1, borderColor: KLINO_COLORS.borderStrong, justifyContent: 'center' }}
         >
-          <KlinoText variant="label" color={activeTab === 'ver' ? KLINO_COLORS.papel : KLINO_COLORS.gris} style={{ letterSpacing: 1, fontWeight: 'bold' }}>VER FORMATOS</KlinoText>
+          <KlinoText variant="label" color={activeTab === 'ver' ? KLINO_COLORS.papel : KLINO_COLORS.gris} style={{ letterSpacing: 0.5, fontWeight: 'bold', fontSize: 12, textAlign: 'center' }}>FORMATOS</KlinoText>
         </TouchableOpacity>
         <TouchableOpacity 
           activeOpacity={0.8}
-          onPress={() => {
-            setEditingModeId(null);
-            setModeName('');
-            setModeFormat('');
-            setModePrompt('');
-            setActiveTab('agregar');
-          }}
-          style={{ flex: 1, backgroundColor: activeTab === 'agregar' ? KLINO_COLORS.verde : KLINO_COLORS.papel, paddingVertical: 16, alignItems: 'center' }}
+          onPress={() => router.push('/add-format')}
+          style={{ flex: 1, backgroundColor: KLINO_COLORS.papel, paddingVertical: 16, alignItems: 'center', justifyContent: 'center' }}
         >
-          <KlinoText variant="label" color={activeTab === 'agregar' ? KLINO_COLORS.papel : KLINO_COLORS.gris} style={{ letterSpacing: 1, fontWeight: 'bold' }}>{editingModeId ? 'EDITAR FORMATO' : 'AGREGAR FORMATO'}</KlinoText>
+          <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 0.5, fontWeight: 'bold', fontSize: 12, textAlign: 'center' }}>NUEVO FORMATO</KlinoText>
         </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
-        
-        {activeTab === 'ver' ? (
-          <>
-            <View style={{ paddingHorizontal: 24, paddingVertical: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
-              <KlinoText variant="body" color={KLINO_COLORS.gris} style={{ lineHeight: 24, fontSize: 16 }}>
-                Formatos guardados en el modo Consultorio. Klino usa sus campos al dictar y al escanear.
-              </KlinoText>
-            </View>
+        <View style={{ paddingHorizontal: 24, paddingVertical: 24, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
+          <KlinoText variant="body" color={KLINO_COLORS.gris} style={{ lineHeight: 24, fontSize: 16 }}>
+            Formatos guardados en el modo Consultorio. Klino usa sus campos al dictar y al escanear.
+          </KlinoText>
+        </View>
 
-            {intelligenceModes.map(mode => (
-              <FormatItem 
-                key={mode.id}
-                title={mode.name}
-                subtitle={`${mode.formatName} · ${mode.sections?.length || 0} apartados`}
-                onEdit={() => handleEdit(mode)}
-                onDelete={() => handleDelete(mode.id)}
-              />
-            ))}
+        {intelligenceModes.map(mode => (
+          <FormatItem 
+            key={mode.id}
+            title={mode.name}
+            subtitle={`${mode.formatName} · ${mode.sections?.length || 0} apartados`}
+            onEdit={() => handleEdit(mode)}
+            onDelete={() => handleDelete(mode.id)}
+          />
+        ))}
 
-            {intelligenceModes.length === 0 && (
-              <View style={{ padding: 40, alignItems: 'center' }}>
-                <KlinoText variant="body" color={KLINO_COLORS.gris}>No hay formatos configurados.</KlinoText>
-              </View>
-            )}
-
-            <View style={{ paddingHorizontal: 24, paddingVertical: 24 }}>
-              <KlinoText variant="body" color={KLINO_COLORS.gris} style={{ lineHeight: 24, fontSize: 16 }}>
-                Si borras un formato, los documentos que ya se guardaron con él no se tocan.
-              </KlinoText>
-            </View>
-          </>
-        ) : (
-          <View style={{ padding: 24 }}>
-            <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 8, letterSpacing: 1 }}>NOMBRE DEL MODO</KlinoText>
-            <TextInput
-              value={modeName}
-              onChangeText={setModeName}
-              placeholder="Ej. Pediatría"
-              style={{ borderWidth: 1, borderColor: KLINO_COLORS.borderStrong, backgroundColor: KLINO_COLORS.papel, padding: 16, fontSize: 18, marginBottom: 24, color: KLINO_COLORS.tinta }}
-            />
-
-            <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 8, letterSpacing: 1 }}>TIPO DE FORMATO</KlinoText>
-            <TextInput
-              value={modeFormat}
-              onChangeText={setModeFormat}
-              placeholder="Ej. Expediente Pediátrico"
-              style={{ borderWidth: 1, borderColor: KLINO_COLORS.borderStrong, backgroundColor: KLINO_COLORS.papel, padding: 16, fontSize: 18, marginBottom: 24, color: KLINO_COLORS.tinta }}
-            />
-
-            <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ marginBottom: 8, letterSpacing: 1 }}>INSTRUCCIONES CLÍNICAS (PROMPT)</KlinoText>
-            <TextInput
-              value={modePrompt}
-              onChangeText={setModePrompt}
-              placeholder="Instrucciones específicas para la IA al redactar este formato..."
-              multiline
-              numberOfLines={4}
-              style={{ borderWidth: 1, borderColor: KLINO_COLORS.borderStrong, backgroundColor: KLINO_COLORS.papel, padding: 16, fontSize: 18, marginBottom: 32, minHeight: 120, textAlignVertical: 'top', color: KLINO_COLORS.tinta }}
-            />
-
-            <TouchableOpacity 
-              activeOpacity={0.8}
-              onPress={handleSave}
-              style={{ backgroundColor: KLINO_COLORS.verde, paddingVertical: 16, alignItems: 'center' }}
-            >
-              <KlinoText variant="label" color={KLINO_COLORS.papel} style={{ fontWeight: 'bold', letterSpacing: 1 }}>GUARDAR FORMATO</KlinoText>
-            </TouchableOpacity>
+        {intelligenceModes.length === 0 && (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <KlinoText variant="body" color={KLINO_COLORS.gris}>No hay formatos configurados.</KlinoText>
           </View>
         )}
 
+        <View style={{ paddingHorizontal: 24, paddingVertical: 24 }}>
+          <KlinoText variant="body" color={KLINO_COLORS.gris} style={{ lineHeight: 24, fontSize: 16 }}>
+            Si borras un formato, los documentos que ya se guardaron con él no se tocan.
+          </KlinoText>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

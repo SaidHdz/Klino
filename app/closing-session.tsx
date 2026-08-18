@@ -24,8 +24,7 @@ export default function ClosingSessionScreen() {
         const keysToRemove = allKeys.filter(k => 
           k.includes('supabase') || 
           k === '@Klino_USER_PROFILE' || 
-          k === '@Klino_Appointments' ||
-          k === '@Klino_LastLogin'
+          k === '@Klino_Appointments'
         );
         if (keysToRemove.length > 0) {
           await AsyncStorage.multiRemove(keysToRemove);

@@ -59,6 +59,9 @@ export default function NotificationsScreen() {
               )}
               <View style={{ flex: 1 }}>
                 <KlinoText variant="body" style={{ fontWeight: 'bold', fontSize: 18, marginBottom: 4 }}>{notif.title}</KlinoText>
+                {notif.description && (
+                  <KlinoText variant="small" style={{ color: KLINO_COLORS.tinta, marginBottom: 2 }}>{notif.description}</KlinoText>
+                )}
                 <KlinoText variant="small" color={KLINO_COLORS.gris}>{notif.message}</KlinoText>
               </View>
             </TouchableOpacity>

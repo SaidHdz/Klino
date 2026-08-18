@@ -55,18 +55,14 @@ export default function NotificationSettingsScreen() {
   );
 }
 
+import { KlinoSwitch } from '../components/common/KlinoSwitch';
+
 const ToggleItem = ({ title, subtitle, value, onToggle }: any) => (
   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderColor: KLINO_COLORS.borderStrong }}>
     <View style={{ flex: 1, paddingRight: 16 }}>
       <KlinoText variant="body" style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 4 }}>{title}</KlinoText>
       <KlinoText variant="small" color={KLINO_COLORS.gris}>{subtitle}</KlinoText>
     </View>
-    <TouchableOpacity 
-      activeOpacity={0.8}
-      onPress={() => onToggle(!value)}
-      style={{ width: 52, height: 32, backgroundColor: value ? KLINO_COLORS.verde : KLINO_COLORS.papelHondo, borderWidth: value ? 0 : 1, borderColor: KLINO_COLORS.borderStrong, justifyContent: 'center', paddingHorizontal: 4 }}
-    >
-      <View style={{ width: 24, height: 24, backgroundColor: value ? KLINO_COLORS.papel : KLINO_COLORS.gris, transform: [{ translateX: value ? 20 : 0 }] }} />
-    </TouchableOpacity>
+    <KlinoSwitch value={value} onValueChange={onToggle} />
   </View>
 );
