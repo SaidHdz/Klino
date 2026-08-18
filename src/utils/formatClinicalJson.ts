@@ -98,11 +98,35 @@ export function formatClinicalJson(input: string | object): ParsedClinicalData {
       { label: 'EXPLORACIÓN FÍSICA', value: nc.exploracion_fisica },
       { label: 'IMPRESIÓN DIAGNÓSTICA', value: nc.impresion_diagnostica },
       { label: 'PLAN', value: nc.plan },
+      { label: 'RECETA', value: nc.receta },
     ];
 
     const formattedBlocks = sectionsList
-      .filter(item => item.value && String(item.value).trim() !== '' && String(item.value).trim() !== '[INAUDIBLE]')
-      .map(item => `**${item.label}:**\n${String(item.value).trim()}`);
+      .filter(item => {
+        if (!item.value) return false;
+        if (Array.isArray(item.value)) return item.value.length > 0;
+        return String(item.value).trim() !== '' && String(item.value).trim() !== '[INAUDIBLE]';
+      })
+      .map(item => {
+        if (Array.isArray(item.value)) {
+          const listItems = item.value.map((v: any) => {
+            if (typeof v === 'string') return `• ${v}`;
+            
+            const med = v.medicamento || v.terapia || 'Indicación';
+            const parts = [];
+            if (v.dosis) parts.push(v.dosis);
+            if (v.indicacion) parts.push(v.indicacion);
+            if (v.frecuencia) parts.push(v.frecuencia);
+            if (v.duracion) parts.push(v.duracion);
+            if (v.indicaciones) parts.push(v.indicaciones);
+            
+            const desc = parts.join(' | ');
+            return `• **${med}**${desc ? `: ${desc}` : ''}`;
+          });
+          return `**${item.label}:**\n${listItems.join('\n')}`;
+        }
+        return `**${item.label}:**\n${String(item.value).trim()}`;
+      });
 
     if (formattedBlocks.length > 0) {
       transcription = formattedBlocks.join('\n\n');
