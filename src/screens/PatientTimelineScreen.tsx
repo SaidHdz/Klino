@@ -419,36 +419,9 @@ const HistoriaClinicaTab = ({ notes }: any) => {
           />
         ) : (
           <View>
-            {(() => {
-              const text = latestNote.transcription || latestNote.rawTranscription || 'Nota vacía.';
-              if (!text.includes('**')) {
-                return (
-                  <KlinoText variant="body" style={{ fontSize: 17, lineHeight: 28, fontFamily: 'serif' }}>
-                    {text}
-                  </KlinoText>
-                );
-              }
-              const parts = text.split(/(\*\*.*?\*\*)/g);
-              return parts.map((part: string, index: number) => {
-                if (part.startsWith('**') && part.endsWith('**')) {
-                  const title = part.slice(2, -2).replace(/:$/, '').trim();
-                  return (
-                    <View key={index} style={{ marginTop: index > 0 ? 16 : 0, marginBottom: 2 }}>
-                      <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 1.5, fontWeight: 'bold' }}>
-                        {title}
-                      </KlinoText>
-                    </View>
-                  );
-                }
-                const bodyText = part.trim();
-                if (!bodyText) return null;
-                return (
-                  <KlinoText key={index} variant="body" style={{ fontSize: 17, lineHeight: 28, fontFamily: 'serif', marginBottom: 16 }}>
-                    {bodyText}
-                  </KlinoText>
-                );
-              });
-            })()}
+            <KlinoText variant="body" style={{ fontSize: 17, lineHeight: 28, fontFamily: 'serif' }}>
+              {(latestNote.transcription || latestNote.rawTranscription || 'Nota vacía.').replace(/\*\*/g, '')}
+            </KlinoText>
           </View>
         )}
 
@@ -464,7 +437,7 @@ const HistoriaClinicaTab = ({ notes }: any) => {
 };
 
 const NotasEvolucionTab = ({ notes, router, patientName, onDictarPress }: any) => {
-  const evolutionNotes = notes?.filter((n: any) => n.specialty === 'Nota de Evolución' || n.specialty === 'Nota Rápida') || [];
+  const evolutionNotes = notes?.filter((n: any) => n.specialty === 'Nota de Evolución' || n.specialty === 'Nota Rápida' || n.specialty === 'Historia Clínica') || [];
   
   return (
     <View>

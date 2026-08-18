@@ -119,35 +119,11 @@ export default function NoteReviewScreen() {
                 textAlignVertical: 'top'
               }}
             />
-          ) : (() => {
-            if (!text.includes('**')) {
-              return (
-                <KlinoText variant="body" style={{ fontSize: 17, lineHeight: 17 * 1.62, fontFamily: KLINO_FONTS.bodyRegular }}>
-                  {text}
-                </KlinoText>
-              );
-            }
-            const parts = text.split(/(\*\*.*?\*\*)/g);
-            return parts.map((part: string, index: number) => {
-              if (part.startsWith('**') && part.endsWith('**')) {
-                const title = part.slice(2, -2).replace(/:$/, '').trim();
-                return (
-                  <View key={index} style={{ marginTop: index > 0 ? 16 : 0, marginBottom: 2 }}>
-                    <KlinoText variant="label" color={KLINO_COLORS.gris} style={{ letterSpacing: 1.5, fontWeight: 'bold' }}>
-                      {title}
-                    </KlinoText>
-                  </View>
-                );
-              }
-              const bodyText = part.trim();
-              if (!bodyText) return null;
-              return (
-                <KlinoText key={index} variant="body" style={{ fontSize: 17, lineHeight: 17 * 1.62, fontFamily: KLINO_FONTS.bodyRegular, marginBottom: 16 }}>
-                  {bodyText}
-                </KlinoText>
-              );
-            });
-          })()}
+          ) : (
+            <KlinoText variant="body" style={{ fontSize: 17, lineHeight: 17 * 1.62, fontFamily: KLINO_FONTS.bodyRegular }}>
+              {text.replace(/\*\*/g, '')}
+            </KlinoText>
+          )}
         </View>
 
         {/* BLOQUE DE RECETA VINCULADA */}

@@ -99,7 +99,7 @@ export function formatClinicalJson(input: string | object): ParsedClinicalData {
         const parts = [v.dosis, v.indicacion, v.frecuencia, v.duracion, v.indicaciones].filter(Boolean);
         return `- ${String(med).toUpperCase()}${parts.length ? ` - ${parts.join(' | ')}` : ''}`;
       });
-      extraBlocks.push(`**PLAN:**\n${planItems.join('\n')}`);
+      extraBlocks.push(`PLAN:\n${planItems.join('\n')}`);
     }
     
     if (cleanObj.receta && Array.isArray(cleanObj.receta)) {
@@ -109,7 +109,7 @@ export function formatClinicalJson(input: string | object): ParsedClinicalData {
         const parts = [v.dosis, v.indicacion, v.frecuencia, v.duracion, v.indicaciones].filter(Boolean);
         return `- ${String(med).toUpperCase()}${parts.length ? ` - ${parts.join(' | ')}` : ''}`;
       });
-      extraBlocks.push(`**RECETA:**\n${recetaItems.join('\n')}`);
+      extraBlocks.push(`RECETA:\n${recetaItems.join('\n')}`);
     }
     
     if (extraBlocks.length > 0) {
@@ -149,9 +149,9 @@ export function formatClinicalJson(input: string | object): ParsedClinicalData {
             const desc = parts.join(' | ');
             return `- ${String(med).toUpperCase()}${desc ? ` - ${desc}` : ''}`;
           });
-          return `**${item.label}:**\n${listItems.join('\n')}`;
+          return `${item.label}:\n${listItems.join('\n')}`;
         }
-        return `**${item.label}:**\n${String(item.value).trim()}`;
+        return `${item.label}:\n${String(item.value).trim()}`;
       });
 
     if (formattedBlocks.length > 0) {
