@@ -145,7 +145,7 @@ export default function NoteReviewScreen() {
                 <ArrowRight size={16} color={KLINO_COLORS.tinta} strokeWidth={1.75} />
               </View>
               <KlinoText variant="small">
-                {planText.length > 80 ? planText.substring(0, 80) + '...' : planText}
+                {planText.replace(/\*\*/g, '').replace(/^[•\-\s]+/g, '').substring(0, 80).trim() + (planText.length > 80 ? '...' : '')}
               </KlinoText>
             </TouchableOpacity>
           ) : null;

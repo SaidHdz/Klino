@@ -503,7 +503,7 @@ const IndicacionesTab = ({ notes, router, patientName, onDictarPress }: any) => 
         id: n.id,
         time: n.time,
         profileId: n.profileId,
-        desc: planText.substring(0, 120) + (planText.length > 120 ? '...' : '')
+        desc: planText.replace(/\*\*/g, '').replace(/^[•\-\s]+/g, '').substring(0, 120).trim() + (planText.length > 120 ? '...' : '')
       };
     }) || [];
 
