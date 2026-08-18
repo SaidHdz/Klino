@@ -435,7 +435,8 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
 
       if (session?.user) {
         setUserId(session.user.id);
-        if (_event === 'SIGNED_IN') {
+        if (_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION') {
+          console.log(`--- [DEBUG] Auth event ${_event} - calling syncWithCloud`);
           syncWithCloud();
         }
       } else {
@@ -691,6 +692,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
     }
     
     try {
+      await AsyncStorage.setItem('@Klino_LoggedOut', 'true');
       await AsyncStorage.removeItem(STORAGE_KEY);
       await AsyncStorage.removeItem('@Klino_Appointments');
       const allKeys = await AsyncStorage.getAllKeys();

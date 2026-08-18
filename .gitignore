@@ -43,5 +43,3 @@ yarn-error.*
 /ios
 /android
 
-# project context
-context/

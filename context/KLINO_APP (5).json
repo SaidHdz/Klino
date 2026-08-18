@@ -1,0 +1,508 @@
+{
+  "name": "KLINO_APP",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "Klino/upload-audio",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "18297ae6-2aa4-45e7-a774-d79cb77ea0d4",
+      "name": "Webhook",
+      "webhookId": "7ba3e1a4-f085-41e9-aec7-c41f4732c4ea"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "binaryPropertyName": "file",
+        "options": {
+          "language": "es"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        320,
+        0
+      ],
+      "id": "52fb2c09-0ffa-40f1-989a-5b99a6399b9c",
+      "name": "Transcribe a recording",
+      "credentials": {
+        "openAiApi": {
+          "id": "NvGlX3ofzIEFelf6",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{\n {\n  \"success\": true,\n  \"payload\": JSON.parse($json.output[0].content[0].text.replace(/```json|```/g, \"\"))\n }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1296,
+        16
+      ],
+      "id": "71e2deff-6cf0-4615-8afb-87f6c5fedf93",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=Actúa como un asistente médico de Ravyn Studio para la app Klino. Tu tarea es procesar una transcripción médica cruda y estructurarla como una nota clínica continua, limpia, fluida y profesional (Formato de Nota Rápida).\n\n1. Extrae el nombre del paciente en el campo 'paciente'. Si no se menciona, pon 'Desconocido'.\n2. En 'nota_limpia', rescata y redacta de forma corrida todo el contexto clínico real (accidentes, síntomas, medicamentos, dosis) con terminología médica correcta. No uses subdivisiones ni títulos como SOAP.\n3. REGLA DE ORO PARA INAUDIBLES: Sustituye por '[INAUDIBLE]' ÚNICAMENTE las palabras específicas, frases aisladas o datos incongruentes que no tengan sentido analítico. El resto de la información que sí es coherente DEBE mantenerse.\n\nDevuelve OBLIGATORIAMENTE un JSON puro sin markdown (sin comillas de bloque ```) con esta estructura exacta:\n{ \n  \"paciente\": \"Nombre o Desconocido\", \n  \"nota_limpia\": \"Contenido redactado de forma profesional y continua aquí...\" \n}\n\nTranscripción cruda a procesar: {{ $json.text }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        784,
+        -48
+      ],
+      "id": "e2569c1c-2acb-49a9-9a62-003a08031279",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "NvGlX3ofzIEFelf6",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $node[\"Webhook\"].json.body.folder }}",
+                    "rightValue": "consulta_general",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "951f5e54-24d3-4ed5-aaf5-0ef24bf485ec"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "417f700e-9e58-4844-9f30-13fb70ba480c",
+                    "leftValue": "={{ $node[\"Webhook\"].json.body.folder }}",
+                    "rightValue": "nota_rapida",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a162a5a5-717a-40d3-afda-21f39f16b551",
+                    "leftValue": "={{ $node[\"Webhook\"].json.body.folder }}",
+                    "rightValue": "modo_pediatria",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ec0bf297-5424-4ad6-980f-55cab2b3524b",
+                    "leftValue": "={{ $node[\"Webhook\"].json.body.folder }}",
+                    "rightValue": "modo_psicologia",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        528,
+        0
+      ],
+      "id": "8159440d-6565-419e-95fc-5c21b7d17f48",
+      "name": "Switch",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=Actúa como un transcriptor y estructurador de datos médicos para la app Klino de Ravyn Studio. Tu tarea es extraer y organizar la información de la transcripción cruda. NO eres un médico diagnosticador, pero SÍ eres un corrector de estilo clínico.\n\nSigue estas reglas estrictas:\n1. CORRECCIÓN DE TERMINOLOGÍA: Tienes permiso para corregir errores evidentes de transcripción fonética (ej. si el audio dice 'etamol', corrígelo a 'paracetamol'; si dice 'preción', pon 'presión'). Debes darle sentido clínico a las palabras mal transcritas basándote en el contexto.\n2. CERO ALUCINACIONES: A pesar de poder corregir palabras, tienes ESTRICTAMENTE PROHIBIDO inventar, deducir o agregar padecimientos, síntomas o medicamentos que no se hayan intentado dictar. Si un dato no existe en el audio, el campo se queda vacío (\"\").\n3. PACIENTE Y SIGNOS VITALES: Extrae nombre y valores exactos. Si no se mencionan, pon \"\".\n4. REGLA LEGAL PARA EXPLORACIÓN FÍSICA: Redacta lo extraído usando descriptores médicos. Prohibido usar la palabra \"normal\" de forma aislada.\n5. INAUDIBLES: Sustituye por '[INAUDIBLE]' únicamente ruidos o palabras que, incluso con tu corrección médica, no tengan ningún sentido.\n\nDevuelve OBLIGATORIAMENTE un JSON puro sin markdown (absolutamente nada de bloques ```json o ```) con esta estructura exacta:\n{\n  \"paciente\": \"\",\n  \"signos_vitales\": {\n    \"presion_arterial\": \"\",\n    \"frecuencia_cardiaca\": \"\",\n    \"frecuencia_respiratoria\": \"\",\n    \"temperatura\": \"\",\n    \"saturacion_oxigeno\": \"\",\n    \"peso\": \"\",\n    \"talla\": \"\"\n  },\n  \"nota_clinica\": {\n    \"antecedentes_heredofamiliares\": \"\",\n    \"antecedentes_personales_no_patologicos\": \"\",\n    \"antecedentes_personales_patologicos\": \"\",\n    \"padecimiento_actual\": \"\",\n    \"exploracion_fisica\": \"\",\n    \"impresion_diagnostica\": \"\",\n    \"plan\": \"\"\n  }\n}\n\nTranscripción cruda a procesar: {{ $json.text }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        784,
+        -192
+      ],
+      "id": "53897650-0472-4631-a7dd-33466fd18163",
+      "name": "Message a model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "NvGlX3ofzIEFelf6",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "useCustomSchema": true,
+        "tableId": "clinical_records",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "doctor_id",
+              "fieldValue": "={{ $('Webhook').item.json.body.profileId }}"
+            },
+            {
+              "fieldId": "raw_transcription",
+              "fieldValue": "={{ $node[\"Transcribe a recording\"].json.text }}"
+            },
+            {
+              "fieldId": "soap_note_text",
+              "fieldValue": "={{ JSON.parse($json.output[0].content[0].text.replace(/```json|```/g, \"\")) }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "pending"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        16
+      ],
+      "id": "1c54d0aa-7e31-4a6a-9aa0-09213458e25b",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "4OGRQae0SU36DsMU",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=Actúa como un transcriptor y estructurador de datos pediátricos para la app Klino de Ravyn Studio. Tu tarea es extraer y organizar la información. NO eres un pediatra diagnosticador, pero SÍ eres un corrector de estilo clínico.\n\nSigue estas reglas estrictas:\n1. CORRECCIÓN DE TERMINOLOGÍA: Corrige errores evidentes de transcripción fonética o mala pronunciación (ej. 'etamol' a 'paracetamol', 'cefálico' mal escrito). Dale sentido clínico a las palabras cortadas o mal transcritas por el micrófono.\n2. CERO ALUCINACIONES: Tienes ESTRICTAMENTE PROHIBIDO inventar diagnósticos, síntomas, hitos del desarrollo o dosis que no se hayan intentado dictar. Lo que no se dictó, se queda vacío (\"\").\n3. PACIENTE Y SIGNOS VITALES: Extrae nombre y valores numéricos exactos. Si no se mencionan, pon \"\".\n4. REGLA LEGAL PARA EXPLORACIÓN FÍSICA: Redacta usando descriptores objetivos. Prohibido usar \"normal\" a secas.\n5. INAUDIBLES: Sustituye por '[INAUDIBLE]' palabras que definitivamente no puedas reparar con el contexto médico.\n\nDevuelve OBLIGATORIAMENTE un JSON puro sin markdown (absolutamente nada de bloques ```json o ```) con esta estructura exacta:\n{\n  \"paciente\": \"\",\n  \"signos_vitales\": {\n    \"presion_arterial\": \"\",\n    \"frecuencia_cardiaca\": \"\",\n    \"frecuencia_respiratoria\": \"\",\n    \"temperatura\": \"\",\n    \"saturacion_oxigeno\": \"\",\n    \"peso\": \"\",\n    \"talla\": \"\"\n  },\n  \"nota_clinica\": {\n    \"antecedentes_heredofamiliares\": \"\",\n    \"antecedentes_personales_no_patologicos\": \"\",\n    \"antecedentes_personales_patologicos\": \"\",\n    \"padecimiento_actual\": \"\",\n    \"exploracion_fisica\": \"\",\n    \"impresion_diagnostica\": \"\",\n    \"plan\": \"\"\n  }\n}\n\nTranscripción cruda a procesar: {{ $json.text }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        784,
+        80
+      ],
+      "id": "db91bbb3-43ab-461d-b1fd-0be3bb5c97a6",
+      "name": "Message a model2",
+      "credentials": {
+        "openAiApi": {
+          "id": "NvGlX3ofzIEFelf6",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=Actúa como un transcriptor y estructurador de datos psiquiátricos/psicológicos para la app Klino de Ravyn Studio. Tu tarea es extraer y organizar la información. NO eres un diagnosticador, pero SÍ un corrector de estilo clínico.\n\nSigue estas reglas estrictas:\n1. CORRECCIÓN DE TERMINOLOGÍA: Corrige errores evidentes de transcripción de Whisper (ej. nombres de terapias, fármacos o términos como 'ansiedad' mal escuchados). Dale coherencia clínica al texto crudo.\n2. CERO ALUCINACIONES: Prohibido inventar el estado mental, detonantes o planes que no se dictaron. Si no se intentó decir, el campo va vacío (\"\").\n3. PACIENTE Y SIGNOS VITALES: Extrae el nombre. Si no hay signos vitales físicos, llena los campos con \"\".\n4. EXAMEN MENTAL Y REGLA LEGAL: Extrae lo dictado sobre actitud, afecto, etc., a 'exploracion_fisica'. Prohibido usar \"normal\" a secas.\n5. INAUDIBLES: Usa '[INAUDIBLE]' solo si la palabra cortada es imposible de deducir clínicamente.\n\nDevuelve OBLIGATORIAMENTE un JSON puro sin markdown (absolutamente nada de bloques ```json o ```) con esta estructura exacta:\n{\n  \"paciente\": \"\",\n  \"signos_vitales\": {\n    \"presion_arterial\": \"\",\n    \"frecuencia_cardiaca\": \"\",\n    \"frecuencia_respiratoria\": \"\",\n    \"temperatura\": \"\",\n    \"saturacion_oxigeno\": \"\",\n    \"peso\": \"\",\n    \"talla\": \"\"\n  },\n  \"nota_clinica\": {\n    \"antecedentes_heredofamiliares\": \"\",\n    \"antecedentes_personales_no_patologicos\": \"\",\n    \"antecedentes_personales_patologicos\": \"\",\n    \"padecimiento_actual\": \"\",\n    \"exploracion_fisica\": \"\",\n    \"impresion_diagnostica\": \"\",\n    \"plan\": \"\"\n  }\n}\n\nTranscripción cruda a procesar: {{ $json.text }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        784,
+        224
+      ],
+      "id": "933237c5-28c8-48d8-88af-3298e2ac0cc6",
+      "name": "Message a model3",
+      "credentials": {
+        "openAiApi": {
+          "id": "NvGlX3ofzIEFelf6",
+          "name": "OpenAI account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.srv1574981.hstgr.cloud",
+            "user-agent": "okhttp/4.12.0",
+            "content-length": "16555",
+            "accept-encoding": "gzip",
+            "content-type": "multipart/form-data; boundary=fc1ba731-cc38-4b3a-b15b-fefb29c4c373",
+            "x-forwarded-for": "172.18.0.1",
+            "x-forwarded-host": "n8n.srv1574981.hstgr.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "68c7320cf911",
+            "x-real-ip": "172.18.0.1"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "profileId": "216b1104-b143-4d87-ac9a-ffbe3d50bb9a",
+            "folder": "consulta_general"
+          },
+          "webhookUrl": "https://n8n.srv1574981.hstgr.cloud/webhook/Klino/upload-audio",
+          "executionMode": "production"
+        },
+        "binary": {
+          "file": {
+            "mimeType": "audio/m4a",
+            "fileType": "audio",
+            "data": "filesystem-v2",
+            "fileName": "dictado.m4a",
+            "id": "filesystem-v2:workflows/gGeuDrcHny1Xg5Kf/executions/539/binary_data/bcffefdc-f383-4ae8-8074-d46558e5eaba",
+            "fileSize": "16.1 kB",
+            "bytes": 16075
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Message a model1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Message a model2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Message a model3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Message a model1": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model2": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model3": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "503eaf59-1fd4-4ed5-8320-63f2601b241c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8604c75a0296604221c476ec538b41a996d2f832964c28d1f3df58124d9c063b"
+  },
+  "id": "gGeuDrcHny1Xg5Kf",
+  "tags": []
+}

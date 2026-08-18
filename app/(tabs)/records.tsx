@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, TouchableOpacity, SafeAreaView, Platform, TextInput, Alert } from 'react-native';
+import { View, ScrollView, TouchableOpacity, SafeAreaView, Platform, TextInput, Alert, RefreshControl } from 'react-native';
 import { Search, ScanLine, FileText, Plus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { KLINO_COLORS } from '../../src/constants/theme';
@@ -10,7 +10,7 @@ import { FadingScrollContainer } from '../../src/components/common/FadingScrollC
 
 export default function RecordsScreen() {
   const router = useRouter();
-  const { notes, intelligenceModes, recordsProfileId, setRecordsProfileId, deleteMultipleNotes } = useProfile();
+  const { notes, intelligenceModes, recordsProfileId, setRecordsProfileId, deleteMultipleNotes, isSyncing, syncWithCloud } = useProfile();
   const { showAlert } = useKlinoAlert();
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -150,7 +150,18 @@ export default function RecordsScreen() {
         </KlinoText>
         
         {/* LISTA DE PACIENTES */}
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <ScrollView 
+          showsVerticalScrollIndicator={false} 
+          contentContainerStyle={{ paddingBottom: 32 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isSyncing}
+              onRefresh={syncWithCloud}
+              colors={[KLINO_COLORS.verde]}
+              tintColor={KLINO_COLORS.verde}
+            />
+          }
+        >
           {filteredPatients.map((p, i) => (
             <TouchableOpacity 
               key={p.id}
