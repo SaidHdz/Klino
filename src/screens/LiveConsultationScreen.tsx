@@ -21,6 +21,7 @@ export default function LiveConsultationScreen() {
   
   const [seconds, setSeconds] = useState(0);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const recordingRef = React.useRef<Audio.Recording | null>(null);
   const isMountedRef = React.useRef(true);
   const [metering, setMetering] = useState<number[]>(Array(30).fill(10));
@@ -93,6 +94,39 @@ export default function LiveConsultationScreen() {
     const m = Math.floor(total / 60).toString().padStart(2, '0');
     const s = (total % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
+  };
+
+  const togglePause = async () => {
+    if (!recordingRef.current) return;
+    try {
+      if (isPaused) {
+        await recordingRef.current.startAsync();
+        setIsPaused(false);
+      } else {
+        await recordingRef.current.pauseAsync();
+        setIsPaused(true);
+      }
+    } catch (e) {
+      console.error('Error toggling pause', e);
+    }
+  };
+
+  const handleCancel = async () => {
+    Alert.alert(
+      "Eliminar Grabación",
+      "¿Estás seguro de que quieres eliminar esta grabación y salir?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Sí, eliminar", 
+          style: "destructive",
+          onPress: async () => {
+            await stopRecording();
+            router.back();
+          }
+        }
+      ]
+    );
   };
 
   const handleFinish = async () => {
@@ -324,26 +358,19 @@ export default function LiveConsultationScreen() {
         {/* ONDA DE AUDIO (REAL METERING) */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 50, marginBottom: 40 }}>
           {metering.map((h, i) => {
-            const bg = i > 25 ? KLINO_COLORS.papel : (i > 15 ? KLINO_COLORS.ambar : KLINO_COLORS.papel);
-            return <View key={i} style={{ width: 4, height: Math.max(4, h), backgroundColor: bg, borderRadius: 2 }} />
+            const bg = (i >= 10 && i <= 20) ? KLINO_COLORS.ambar : KLINO_COLORS.papel;
+            const activeColor = isPaused ? 'rgba(244, 241, 234, 0.4)' : bg;
+            return <View key={i} style={{ width: 4, height: Math.max(4, h), backgroundColor: activeColor, borderRadius: 0 }} />
           })}
         </View>
 
         <KlinoText variant="label" color={KLINO_COLORS.papel} style={{ marginBottom: 16 }}>
-          {isFinishing ? 'PROCESANDO AUDIO...' : 'ESCUCHANDO CONSULTA'}
+          {isFinishing ? 'PROCESANDO AUDIO...' : (isPaused ? 'EN PAUSA' : 'ESCUCHANDO CONSULTA')}
         </KlinoText>
         
         <View style={{ height: 1, backgroundColor: 'rgba(244, 241, 234, 0.2)', marginBottom: 24 }} />
 
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ 
-            width: 64, height: 64, borderRadius: 32, 
-            backgroundColor: isFinishing ? KLINO_COLORS.gris : 'rgba(244, 241, 234, 0.1)', 
-            justifyContent: 'center', alignItems: 'center', marginBottom: 24 
-          }}>
-            <Mic size={32} color={isFinishing ? 'rgba(244, 241, 234, 0.5)' : KLINO_COLORS.ambar} strokeWidth={1.5} />
-          </View>
-          
           <KlinoText variant="h3" color={KLINO_COLORS.papel} style={{ textAlign: 'center', marginBottom: 8 }}>
             {isFinishing ? 'Estructurando Nota...' : 'Habla libremente'}
           </KlinoText>
@@ -364,11 +391,11 @@ export default function LiveConsultationScreen() {
         </View>
 
         <View style={{ flexDirection: 'row', gap: 16, marginBottom: 24 }}>
-          <TouchableOpacity style={[styles.ghostBtn, { flex: 1 }]}>
-             <KlinoText variant="label" color={KLINO_COLORS.papel}>PAUSAR</KlinoText>
+          <TouchableOpacity onPress={togglePause} disabled={isFinishing} style={[styles.ghostBtn, { flex: 1 }]}>
+             <KlinoText variant="label" color={KLINO_COLORS.papel}>{isPaused ? 'REANUDAR' : 'PAUSAR'}</KlinoText>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.ghostBtn, { flex: 1 }]}>
-             <KlinoText variant="label" color={KLINO_COLORS.papel}>MARCAR MOMENTO</KlinoText>
+          <TouchableOpacity onPress={handleCancel} disabled={isFinishing} style={[styles.ghostBtn, { flex: 1, borderColor: 'rgba(240, 169, 79, 0.4)' }]}>
+             <KlinoText variant="label" color={KLINO_COLORS.ambar}>ELIMINAR</KlinoText>
           </TouchableOpacity>
         </View>
 
