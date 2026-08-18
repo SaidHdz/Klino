@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, SafeAreaView, TouchableOpacity, Platform, StyleSheet, Alert } from 'react-native';
-import { X } from 'lucide-react-native';
+import { X, Mic } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Audio } from 'expo-av';
 import { KLINO_COLORS } from '../constants/theme';
@@ -335,13 +335,24 @@ export default function LiveConsultationScreen() {
         
         <View style={{ height: 1, backgroundColor: 'rgba(244, 241, 234, 0.2)', marginBottom: 24 }} />
 
-        {/* BLOQUES SOAP */}
-        <SoapSection status="completed" title="SUBJETIVO" content="Escuchando motivo de consulta y síntomas..." />
-        <SoapSection status="listening" title="OBJETIVO" content="Esperando signos vitales o exploración..." />
-        <SoapSection status="empty" title="ANÁLISIS" content="" />
-        <SoapSection status="empty" title="PLAN" content="" />
-
-        <View style={{ flex: 1 }} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ 
+            width: 64, height: 64, borderRadius: 32, 
+            backgroundColor: isFinishing ? KLINO_COLORS.gris : 'rgba(244, 241, 234, 0.1)', 
+            justifyContent: 'center', alignItems: 'center', marginBottom: 24 
+          }}>
+            <Mic size={32} color={isFinishing ? 'rgba(244, 241, 234, 0.5)' : KLINO_COLORS.ambar} strokeWidth={1.5} />
+          </View>
+          
+          <KlinoText variant="h3" color={KLINO_COLORS.papel} style={{ textAlign: 'center', marginBottom: 8 }}>
+            {isFinishing ? 'Estructurando Nota...' : 'Habla libremente'}
+          </KlinoText>
+          <KlinoText variant="body" color="rgba(244, 241, 234, 0.6)" style={{ textAlign: 'center', maxWidth: 280 }}>
+            {isFinishing 
+              ? 'La IA está clasificando la información en el formato correcto.' 
+              : 'La IA analizará el audio y organizará la información en el formato clínico de forma automática.'}
+          </KlinoText>
+        </View>
 
         {/* CONTROLES INFERIORES */}
         <View style={{ backgroundColor: KLINO_COLORS.papel, padding: 16, marginBottom: 16 }}>
@@ -367,22 +378,6 @@ export default function LiveConsultationScreen() {
 
       </View>
     </SafeAreaView>
-  );
-}
-
-const SoapSection = ({ status, title, content }: any) => {
-  return (
-    <View style={{ flexDirection: 'row', marginBottom: 24 }}>
-      <View style={{ marginTop: 2, marginRight: 16 }}>
-        {status === 'completed' && <View style={{ width: 16, height: 16, backgroundColor: KLINO_COLORS.papel }} />}
-        {status === 'listening' && <View style={{ width: 16, height: 16, borderWidth: 2, borderColor: KLINO_COLORS.ambar }} />}
-        {status === 'empty' && <View style={{ width: 16, height: 16, borderWidth: 2, borderColor: KLINO_COLORS.papel }} />}
-      </View>
-      <View style={{ flex: 1 }}>
-        <KlinoText variant="label" color={KLINO_COLORS.papel} style={{ marginBottom: 4 }}>{title}</KlinoText>
-        <KlinoText variant="body" color={status === 'empty' ? 'rgba(244, 241, 234, 0.6)' : KLINO_COLORS.papel}>{content}</KlinoText>
-      </View>
-    </View>
   );
 }
 

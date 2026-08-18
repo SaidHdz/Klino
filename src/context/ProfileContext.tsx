@@ -429,20 +429,16 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       // Check if user just logged out — ignore any stale session events
       const loggedOut = await AsyncStorage.getItem('@Klino_LoggedOut');
       if (loggedOut === 'true') {
-        console.log('--- [DEBUG Auth State] Ignorando evento auth post-logout');
         setUserId(null);
         return;
       }
 
       if (session?.user) {
-        console.log('--- [DEBUG Auth State] Usuario autenticado activo en Supabase:', session.user.id);
         setUserId(session.user.id);
         if (_event === 'SIGNED_IN') {
-          console.log('--- [DEBUG Auth State] Evento SIGNED_IN detectado. Sincronizando notas...');
           syncWithCloud();
         }
       } else {
-        console.log('--- [DEBUG Auth State] Sin sesión activa en Supabase');
         setUserId(null);
       }
     });
@@ -451,6 +447,27 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Supabase Realtime Subscription
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase.channel('custom-all-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'clinical_records', filter: `doctor_id=eq.${userId}` },
+        (payload) => {
+          console.log('Realtime change received!', payload);
+          // Si cambia a completed u ocurre un update/insert importante, recargamos
+          syncWithCloud();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
 
   useEffect(() => {
     if (isReady) {
